@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@career-os/*": [
+        "packages/*/src/index.ts"
+      ],
+      "@career-os/domains/src/*": [
+        "packages/domains/src/*"
+      ]
+    },
+    "ignoreDeprecations": "6.0",
+    "types": []
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "prisma/**/*.ts",
+    "global.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

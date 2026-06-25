@@ -1,0 +1,99 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum DomainStatus { placeholder phase_1 active retired }
+enum JobSegmentValue { REMOTE_COMMERCIAL HYBRID_COMMERCIAL ONSITE_COMMERCIAL CONTRACT CLEARANCE_GOVERNMENT PUBLIC_TRUST SECRET TOP_SECRET TS_SCI POLYGRAPH CLEARANCE_ELIGIBLE UNKNOWN_CLEARANCE_RISK LOW_FIT ARCHIVED_REJECTED }
+
+model User { id String @id @default(cuid()) email String @unique name String? createdAt DateTime @default(now()) profile UserProfile? preferences UserPreference? events Event[] applications Application[] }
+model UserProfile { id String @id @default(cuid()) userId String @unique headline String? skills String[] targetRoles String[] user User @relation(fields:[userId], references:[id]) }
+model UserPreference { id String @id @default(cuid()) userId String @unique remoteFirst Boolean @default(true) commercialFirst Boolean @default(true) clearanceSeparated Boolean @default(true) user User @relation(fields:[userId], references:[id]) }
+model DomainRegistry { id String @id @default(cuid()) name String slug String @unique manager String status DomainStatus @default(placeholder) version String capabilities CapabilityRegistry[] workers WorkerRegistry[] tools ToolRegistry[] }
+model CapabilityRegistry { id String @id @default(cuid()) domainId String name String commands String[] events String[] permissions String[] domain DomainRegistry @relation(fields:[domainId], references:[id]) }
+model WorkerRegistry { id String @id @default(cuid()) domainId String name String status DomainStatus @default(placeholder) domain DomainRegistry @relation(fields:[domainId], references:[id]) }
+model ToolRegistry { id String @id @default(cuid()) domainId String name String status DomainStatus @default(placeholder) domain DomainRegistry @relation(fields:[domainId], references:[id]) }
+model Event { id String @id @default(cuid()) eventType String entityType String entityId String domain String manager String? capability String? worker String? userId String? payload Json? evidence Json? confidence Float? modelUsed String? promptVersion String? createdAt DateTime @default(now()) user User? @relation(fields:[userId], references:[id]) @@index([eventType,entityType,entityId]) }
+model StateProjection { id String @id @default(cuid()) projectionType String entityType String entityId String state Json updatedAt DateTime @updatedAt @@unique([projectionType,entityType,entityId]) }
+model Snapshot { id String @id @default(cuid()) entityType String entityId String source String content Json hash String? capturedAt DateTime @default(now()) }
+model AuditLog { id String @id @default(cuid()) actorId String? action String entityType String? entityId String? payload Json? createdAt DateTime @default(now()) }
+model ApprovalRequest { id String @id @default(cuid()) userId String action String reason String? status String @default("pending") payload Json? createdAt DateTime @default(now()) decidedAt DateTime? }
+model SystemSetting { id String @id @default(cuid()) key String @unique value Json updatedAt DateTime @updatedAt }
+
+model Company { id String @id @default(cuid()) name String website String? industry String? createdAt DateTime @default(now()) sources CompanySource[] aliases CompanyAlias[] technologies CompanyTechnology[] watchlists CompanyWatchlist[] careerPages CareerPage[] atsProfiles AtsProfile[] jobs Job[] people Person[] }
+model CompanySource { id String @id @default(cuid()) companyId String source String url String? company Company @relation(fields:[companyId], references:[id]) }
+model CompanyAlias { id String @id @default(cuid()) companyId String alias String company Company @relation(fields:[companyId], references:[id]) }
+model CompanyTechnology { id String @id @default(cuid()) companyId String technology String company Company @relation(fields:[companyId], references:[id]) }
+model CompanyWatchlist { id String @id @default(cuid()) companyId String userId String priority Int @default(0) company Company @relation(fields:[companyId], references:[id]) }
+model CareerPage { id String @id @default(cuid()) companyId String url String status String @default("unknown") company Company @relation(fields:[companyId], references:[id]) }
+model AtsProfile { id String @id @default(cuid()) companyId String atsName String confidence Float? company Company @relation(fields:[companyId], references:[id]) playbooks AtsPlaybook[] }
+model AtsPlaybook { id String @id @default(cuid()) atsProfileId String name String details Json? atsProfile AtsProfile @relation(fields:[atsProfileId], references:[id]) }
+
+model Job { id String @id @default(cuid()) companyId String? title String location String? description String? url String? status String @default("discovered") createdAt DateTime @default(now()) company Company? @relation(fields:[companyId], references:[id]) snapshots JobSnapshot[] sources JobSource[] skills JobSkill[] certifications JobCertification[] clearanceFlags JobClearanceFlag[] remoteClassifications JobRemoteClassification[] salaryRanges JobSalaryRange[] segments JobSegment[] fitScores JobFitScore[] difficultyScores JobApplicationDifficultyScore[] applications Application[] }
+model JobSnapshot { id String @id @default(cuid()) jobId String content Json capturedAt DateTime @default(now()) job Job @relation(fields:[jobId], references:[id]) }
+model JobSource { id String @id @default(cuid()) jobId String source String url String? job Job @relation(fields:[jobId], references:[id]) }
+model JobSkill { id String @id @default(cuid()) jobId String skill String job Job @relation(fields:[jobId], references:[id]) }
+model JobCertification { id String @id @default(cuid()) jobId String certification String required Boolean @default(false) job Job @relation(fields:[jobId], references:[id]) }
+model JobClearanceFlag { id String @id @default(cuid()) jobId String flag String evidence String? job Job @relation(fields:[jobId], references:[id]) }
+model JobRemoteClassification { id String @id @default(cuid()) jobId String classification String confidence Float? job Job @relation(fields:[jobId], references:[id]) }
+model JobSalaryRange { id String @id @default(cuid()) jobId String min Int? max Int? currency String @default("USD") job Job @relation(fields:[jobId], references:[id]) }
+model JobSegment { id String @id @default(cuid()) jobId String segment JobSegmentValue reason String? job Job @relation(fields:[jobId], references:[id]) }
+model JobDuplicate { id String @id @default(cuid()) canonicalJobId String duplicateJobId String confidence Float? }
+model JobFitScore { id String @id @default(cuid()) jobId String score Int evidence Json? job Job @relation(fields:[jobId], references:[id]) }
+model JobApplicationDifficultyScore { id String @id @default(cuid()) jobId String score Int evidence Json? job Job @relation(fields:[jobId], references:[id]) }
+
+model Application { id String @id @default(cuid()) userId String jobId String status String @default("ready_to_apply") createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id]) job Job @relation(fields:[jobId], references:[id]) packets ApplicationPacket[] events ApplicationEvent[] questions ApplicationQuestion[] documents ApplicationDocument[] history ApplicationStatusHistory[] }
+model ApplicationPacket { id String @id @default(cuid()) applicationId String status String @default("draft") application Application @relation(fields:[applicationId], references:[id]) }
+model ApplicationEvent { id String @id @default(cuid()) applicationId String eventType String payload Json? createdAt DateTime @default(now()) application Application @relation(fields:[applicationId], references:[id]) }
+model ApplicationQuestion { id String @id @default(cuid()) applicationId String question String sensitive Boolean @default(false) application Application @relation(fields:[applicationId], references:[id]) answers ApplicationAnswer[] }
+model ApplicationAnswer { id String @id @default(cuid()) questionId String answer String approved Boolean @default(false) question ApplicationQuestion @relation(fields:[questionId], references:[id]) }
+model ApplicationDocument { id String @id @default(cuid()) applicationId String documentType String url String? application Application @relation(fields:[applicationId], references:[id]) }
+model ApplicationStatusHistory { id String @id @default(cuid()) applicationId String status String createdAt DateTime @default(now()) application Application @relation(fields:[applicationId], references:[id]) }
+model MasterResume { id String @id @default(cuid()) userId String content Json versions ResumeVersion[] }
+model ResumeVersion { id String @id @default(cuid()) masterResumeId String jobId String? companyId String? content Json templateId String? masterResume MasterResume @relation(fields:[masterResumeId], references:[id]) }
+model ResumeTemplate { id String @id @default(cuid()) name String templateType String content Json? }
+model CoverLetter { id String @id @default(cuid()) applicationId String? content String status String @default("draft") }
+model RecruiterMessage { id String @id @default(cuid()) personId String? content String createdAt DateTime @default(now()) }
+model DocumentExport { id String @id @default(cuid()) documentType String format String url String? createdAt DateTime @default(now()) }
+model DocumentVersion { id String @id @default(cuid()) documentType String documentId String content Json createdAt DateTime @default(now()) }
+model DocumentMetadata { id String @id @default(cuid()) documentType String documentId String metadata Json }
+model Person { id String @id @default(cuid()) name String linkedinUrl String? currentCompanyId String? agency String? relationshipScore Int @default(0) trustScore Int @default(0) lastContactDate DateTime? nextFollowUpDate DateTime? currentCompany Company? @relation(fields:[currentCompanyId], references:[id]) roles PersonRole[] emails PersonEmail[] phones PersonPhoneNumber[] recruiterProfile RecruiterProfile? hiringManagerProfile HiringManagerProfile? interviewerProfile InterviewerProfile? referralProfile ReferralProfile? relationships Relationship[] events RelationshipEvent[] conversations Conversation[] timelines ContactTimeline[] }
+model PersonRole { id String @id @default(cuid()) personId String role String companyId String? startedAt DateTime? endedAt DateTime? person Person @relation(fields:[personId], references:[id]) }
+model PersonEmail { id String @id @default(cuid()) personId String email String @unique person Person @relation(fields:[personId], references:[id]) }
+model PersonPhoneNumber { id String @id @default(cuid()) personId String phone String person Person @relation(fields:[personId], references:[id]) }
+model RecruiterProfile { id String @id @default(cuid()) personId String @unique jobsSent Int @default(0) relevantJobsSent Int @default(0) person Person @relation(fields:[personId], references:[id]) }
+model HiringManagerProfile { id String @id @default(cuid()) personId String @unique person Person @relation(fields:[personId], references:[id]) }
+model InterviewerProfile { id String @id @default(cuid()) personId String @unique person Person @relation(fields:[personId], references:[id]) }
+model ReferralProfile { id String @id @default(cuid()) personId String @unique person Person @relation(fields:[personId], references:[id]) }
+model Relationship { id String @id @default(cuid()) personId String userId String status String person Person @relation(fields:[personId], references:[id]) }
+model RelationshipEvent { id String @id @default(cuid()) personId String eventType String payload Json? createdAt DateTime @default(now()) person Person @relation(fields:[personId], references:[id]) }
+model Conversation { id String @id @default(cuid()) personId String subject String? person Person @relation(fields:[personId], references:[id]) messages ConversationMessage[] }
+model ConversationMessage { id String @id @default(cuid()) conversationId String direction String content String createdAt DateTime @default(now()) conversation Conversation @relation(fields:[conversationId], references:[id]) }
+model ContactTimeline { id String @id @default(cuid()) personId String eventType String summary String createdAt DateTime @default(now()) person Person @relation(fields:[personId], references:[id]) }
+model EmailAccount { id String @id @default(cuid()) userId String provider String email String }
+model EmailThread { id String @id @default(cuid()) accountId String providerThreadId String subject String? messages EmailMessage[] }
+model EmailMessage { id String @id @default(cuid()) threadId String from String to String[] subject String? body String? receivedAt DateTime? thread EmailThread @relation(fields:[threadId], references:[id]) classifications EmailClassification[] attachments EmailAttachment[] }
+model EmailClassification { id String @id @default(cuid()) messageId String category String confidence Float? message EmailMessage @relation(fields:[messageId], references:[id]) }
+model EmailAttachment { id String @id @default(cuid()) messageId String filename String mimeType String? url String? message EmailMessage @relation(fields:[messageId], references:[id]) }
+model EmailDraft { id String @id @default(cuid()) accountId String to String[] subject String body String approvalRequired Boolean @default(true) }
+model CalendarAccount { id String @id @default(cuid()) userId String provider String email String }
+model CalendarEvent { id String @id @default(cuid()) accountId String providerEventId String title String startsAt DateTime endsAt DateTime meetingLinks MeetingLink[] interviewEvent InterviewEvent? }
+model InterviewEvent { id String @id @default(cuid()) calendarEventId String @unique companyId String? jobId String? stage String? status String @default("scheduled") calendarEvent CalendarEvent @relation(fields:[calendarEventId], references:[id]) attendees InterviewAttendee[] }
+model MeetingLink { id String @id @default(cuid()) calendarEventId String provider String url String calendarEvent CalendarEvent @relation(fields:[calendarEventId], references:[id]) }
+model InterviewAttendee { id String @id @default(cuid()) interviewEventId String personId String? email String? interviewEvent InterviewEvent @relation(fields:[interviewEventId], references:[id]) }
+model FollowupRule { id String @id @default(cuid()) name String delayDays Int maxAttempts Int approvalRequired Boolean @default(true) }
+model Followup { id String @id @default(cuid()) personId String? applicationId String? dueAt DateTime status String @default("due") events FollowupEvent[] }
+model FollowupEvent { id String @id @default(cuid()) followupId String eventType String payload Json? createdAt DateTime @default(now()) followup Followup @relation(fields:[followupId], references:[id]) }
+model FollowupTemplate { id String @id @default(cuid()) name String body String }
+model SnoozeRule { id String @id @default(cuid()) name String durationHours Int }
+model KnowledgeItem { id String @id @default(cuid()) title String content Json }
+model MemoryItem { id String @id @default(cuid()) userId String content Json }
+model SkillGap { id String @id @default(cuid()) userId String skill String priority Int @default(0) }
+model MarketMetric { id String @id @default(cuid()) name String value Json capturedAt DateTime @default(now()) }
+model LearningMetric { id String @id @default(cuid()) userId String metric String value Json }
+model ReputationRecord { id String @id @default(cuid()) userId String source String value Json }
+model ReferralOpportunity { id String @id @default(cuid()) userId String personId String? companyId String? status String }
+model OpportunityRecord { id String @id @default(cuid()) userId String source String payload Json }
+model FinanceRecord { id String @id @default(cuid()) userId String recordType String payload Json }
+model SalaryBenchmark { id String @id @default(cuid()) role String location String? min Int? max Int? source String }
+model OfferRecord { id String @id @default(cuid()) applicationId String? payload Json status String }
+model ResearchNote { id String @id @default(cuid()) userId String title String content String }
+model SimulationResult { id String @id @default(cuid()) userId String simulationType String result Json createdAt DateTime @default(now()) }

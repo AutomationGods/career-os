@@ -1,0 +1,1 @@
+{"name":"@career-os/web","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"next dev","build":"next build","typecheck":"tsc --noEmit"},"dependencies":{"@career-os/domains":"0.1.0","@career-os/shared":"0.1.0","next":"^14.2.4","react":"^18.3.1","react-dom":"^18.3.1"},"devDependencies":{}}
