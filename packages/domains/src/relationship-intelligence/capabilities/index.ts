@@ -1,1 +1,1 @@
-export const capabilities = ["RelationshipDedupeCapability"];
+export const capabilities = ["RelationshipDedupeCapability", "RecruiterDiscoveryCapability", "HiringManagerDiscoveryCapability"];

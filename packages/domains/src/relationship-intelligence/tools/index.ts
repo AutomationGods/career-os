@@ -1,1 +1,1 @@
-export const tools = ["RelationshipMatchingTool"];
+export const tools = ["RelationshipMatchingTool", "PublicRecruiterDiscoveryTool", "PublicHiringManagerDiscoveryTool"];

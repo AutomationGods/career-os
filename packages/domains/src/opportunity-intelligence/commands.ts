@@ -1,1 +1,1 @@
-export const commands = ["opportunity-intelligence.execute"];
+export const commands = ["opportunity.hidden_jobs.plan", "opportunity.hiring_signals.plan"];

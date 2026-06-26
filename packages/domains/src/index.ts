@@ -3,4 +3,8 @@ export * from "./job-intelligence";
 export * from "./job-intelligence/pipeline";
 export { JobIntelligenceManager } from "./job-intelligence/manager";
 export * from "./application-packet/services";
+export * from "./research/search-intelligence-playbooks";
+export * from "./opportunity-intelligence/opportunity-playbooks";
+export * from "./relationship-intelligence/discovery-playbooks";
 export * from "./relationship-intelligence/services";
+export * from "./mission/campaign-playbooks";

@@ -1,1 +1,1 @@
-export const workers = ["Placeholder Worker"];
+export const workers = ["DailyMissionWorker", "CampaignTrackingWorker"];

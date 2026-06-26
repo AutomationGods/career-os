@@ -4,15 +4,15 @@ export const definition: DomainDefinition = {
   name: "Research Domain",
   slug: "research",
   manager: "Research Manager",
-  capabilities: ["Placeholder Capability"],
-  workers: ["Placeholder Worker"],
-  tools: ["Placeholder Tool"],
-  commands: ["research.execute"],
-  events: ["research.completed"],
-  permissions: [],
-  dependencies: [],
-  status: "placeholder",
-  version: "0.1.0"
+  capabilities: ["SearchIntelligenceCapability", "OSINTCompanyReconCapability"],
+  workers: ["SearchPatternPlanningWorker", "OSINTCompanyReconWorker"],
+  tools: ["SearchPatternCatalogTool", "CompanyReconChecklistTool"],
+  commands: ["research.search_intelligence.plan", "research.company_recon.plan"],
+  events: ["research.search_intelligence_planned", "research.company_recon_planned"],
+  permissions: ["read_jobs"],
+  dependencies: ["event-store", "state-store"],
+  status: "partial",
+  version: "0.2.0"
 };
 
 export class ResearchManager { readonly definition = definition; }

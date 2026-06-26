@@ -1,1 +1,1 @@
-export const tools = ["Placeholder Tool"];
+export const tools = ["HiddenOpportunityPlanningTool", "HiringSignalCatalogTool"];

@@ -5,6 +5,7 @@ dist
 .env.local
 coverage
 .gg/screenshots/
+.gg/plans/
 *.tsbuildinfo
 apps/**/*.js
 packages/**/*.js

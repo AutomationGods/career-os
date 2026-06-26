@@ -1,1 +1,1 @@
-export const workers = ["RelationshipDedupeWorker"];
+export const workers = ["RelationshipDedupeWorker", "RecruiterDiscoveryWorker", "HiringManagerDiscoveryWorker"];
