@@ -76,9 +76,23 @@ export class ApprovalReplayService {
       }
     });
 
-    const result = await this.commandBus.execute(command);
-    const finalApproval = result.ok ? await this.approvals.completeReplay(approval.id, result) : await this.approvals.failReplay(approval.id, result.error ?? result);
-
-    return { approval: finalApproval ?? started, command: result, replayed: true, idempotent: false };
+    try {
+      const result = await this.commandBus.execute(command);
+      const finalApproval = result.ok ? await this.approvals.completeReplay(approval.id, result) : await this.approvals.failReplay(approval.id, result.error ?? result);
+      return { approval: finalApproval ?? started, command: result, replayed: true, idempotent: false };
+    } catch (error) {
+      const result: CommandResult = {
+        ok: false,
+        status: "failed",
+        commandId,
+        approvalRequestId: approval.id,
+        error: {
+          code: "REPLAY_COMMAND_FAILED",
+          message: error instanceof Error ? error.message : "Unknown replay command failure"
+        }
+      };
+      const finalApproval = await this.approvals.failReplay(approval.id, result.error);
+      return { approval: finalApproval ?? started, command: result, replayed: true, idempotent: false };
+    }
   }
 }
