@@ -1,1 +1,1 @@
-export const events = ["resume-factory.completed"];
+export const events = ["resume.placeholder_created"];

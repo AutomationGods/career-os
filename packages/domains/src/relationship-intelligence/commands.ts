@@ -1,1 +1,1 @@
-export const commands = ["relationship-intelligence.execute"];
+export const commands = ["relationships.upsert", "relationships.dedupe"];

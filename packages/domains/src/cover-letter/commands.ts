@@ -1,1 +1,1 @@
-export const commands = ["cover-letter.execute"];
+export const commands = ["cover_letter.generate_placeholder"];

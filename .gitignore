@@ -4,3 +4,6 @@ dist
 .env
 .env.local
 coverage
+*.tsbuildinfo
+apps/**/*.js
+packages/**/*.js

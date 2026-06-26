@@ -1,5 +1,5 @@
+import { normalizeJob } from "@career-os/domains";
 import type { NormalizedJob } from "@career-os/shared";
-import { normalizeJob } from "@career-os/domains/src/job-intelligence";
 
 export async function collectGreenhouseJobs(boardToken: string): Promise<NormalizedJob[]> {
   const response = await fetch(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs?content=true`);

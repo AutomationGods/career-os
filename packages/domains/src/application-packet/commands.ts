@@ -1,1 +1,1 @@
-export const commands = ["application-packet.execute"];
+export const commands = ["application_packets.create", "application_packets.generate_placeholders"];

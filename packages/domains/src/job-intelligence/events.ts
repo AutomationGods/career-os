@@ -1,1 +1,1 @@
-export const events = ["job.pipeline_completed", "job.pipeline_failed"];
+export const events = ["job.normalized", "job.remote_classified", "job.clearance_segmented", "job.certification_classified", "job.scored", "job.application_difficulty_scored", "job.pipeline_completed", "job.pipeline_failed"];

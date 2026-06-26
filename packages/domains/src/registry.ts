@@ -1,5 +1,6 @@
 import type { DomainDefinition } from "@career-os/shared";
 import { definition as orchestration } from "./orchestration/manager";
+import { definition as system_kernel } from "./system-kernel/manager";
 import { definition as configuration } from "./configuration/manager";
 import { definition as security } from "./security/manager";
 import { definition as trust_and_safety } from "./trust-and-safety/manager";
@@ -13,6 +14,8 @@ import { definition as knowledge } from "./knowledge/manager";
 import { definition as memory } from "./memory/manager";
 import { definition as observability } from "./observability/manager";
 import { definition as qa } from "./qa/manager";
+import { definition as workflow } from "./workflow/manager";
+import { definition as mission } from "./mission/manager";
 import { definition as event_store } from "./event-store/manager";
 import { definition as state_store } from "./state-store/manager";
 import { definition as snapshot_store } from "./snapshot-store/manager";
@@ -27,6 +30,7 @@ import { definition as career_page } from "./career-page/manager";
 import { definition as ats_intelligence } from "./ats-intelligence/manager";
 import { definition as job_discovery } from "./job-discovery/manager";
 import { definition as job_normalization } from "./job-normalization/manager";
+import { definition as job_intelligence } from "./job-intelligence/manager";
 import { definition as fit_scoring } from "./fit-scoring/manager";
 import { definition as application_difficulty } from "./application-difficulty/manager";
 import { definition as clearance_segmentation } from "./clearance-segmentation/manager";
@@ -59,6 +63,7 @@ import { definition as simulation } from "./simulation/manager";
 
 export const domainRegistry: DomainDefinition[] = [
   orchestration,
+  system_kernel,
   configuration,
   security,
   trust_and_safety,
@@ -72,6 +77,8 @@ export const domainRegistry: DomainDefinition[] = [
   memory,
   observability,
   qa,
+  workflow,
+  mission,
   event_store,
   state_store,
   snapshot_store,
@@ -86,6 +93,7 @@ export const domainRegistry: DomainDefinition[] = [
   ats_intelligence,
   job_discovery,
   job_normalization,
+  job_intelligence,
   fit_scoring,
   application_difficulty,
   clearance_segmentation,
@@ -116,4 +124,5 @@ export const domainRegistry: DomainDefinition[] = [
   reputation,
   simulation
 ];
+
 export const getDomain = (slug: string) => domainRegistry.find((domain) => domain.slug === slug);

@@ -1,13 +1,63 @@
-# DATABASE
+# Database
 
-This document captures the Career OS Phase 1 foundation from the PRD. The platform is organized as Domain → Manager → Capabilities → Workers → Tools → Events → State Projections → UI Workspaces.
+Career OS uses Postgres through Prisma for durable platform storage.
 
-- Event Store preserves permanent history.
-- State Store maintains current truth.
-- Snapshot Store preserves historical copies.
-- Domain Registry lets managers, capabilities, workers, tools, commands, events, permissions, dependencies, status, and versions evolve without changing the orchestrator.
-- Human approval is required for sensitive actions; auto-submit and LinkedIn scraping are not implemented.
+The database supports the reusable automation platform first, then Career OS-specific domains on top.
 
-## Phase 2 update
+## Durable platform stores
 
-Phase 2 adds the Job Intelligence Pipeline, Application Packet service, Resume Factory placeholders, Cover Letter placeholders, Relationship Intelligence dedupe, Daily Mission v2, and API/UI surfaces. Gmail, Calendar, browser automation, Chrome extension work, LinkedIn scraping, proxy scraping, CAPTCHA bypassing, and auto-submit remain explicitly out of scope.
+### Event Store
+
+`Event` is the append-oriented history of meaningful system behavior.
+
+Indexed fields:
+
+- `userId`
+- `eventType`
+- `entityType`
+- `entityId`
+- `domain`
+- `createdAt`
+
+Events preserve payload, evidence, confidence, model, prompt version, manager, capability, and worker metadata when available.
+
+### State Store
+
+`StateProjection` stores current truth for fast reads.
+
+Indexed fields:
+
+- `userId`
+- `entityType`
+- `entityId`
+- `projectionType`
+- `updatedAt`
+
+State projections contain `data` and optional `sourceEventId` so current state can link back to the event that produced it.
+
+### Snapshot Store
+
+`Snapshot` preserves source material at a point in time.
+
+Indexed fields:
+
+- `userId`
+- `entityType`
+- `entityId`
+- `snapshotType`
+- `createdAt`
+
+Snapshots contain `data` and a checksum for simple comparison.
+
+## Store implementations
+
+Each store has two implementations:
+
+- in-memory implementation for tests and lightweight local usage.
+- Prisma implementation for durable Postgres-backed workflows.
+
+## Current scope
+
+This layer provides durable plumbing only.
+
+It does not add Gmail sync, Calendar sync, email sending, browser automation, LinkedIn scraping, CAPTCHA bypassing, or auto-submit behavior.

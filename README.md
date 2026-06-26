@@ -1,23 +1,77 @@
 # Career OS
 
-Career OS is an event-driven, domain-based, AI-assisted career operating system. It is not a simple job board and it is not a blind auto-apply bot.
+Career OS is the first flagship implementation of a reusable event-driven automation platform.
+
+The platform layer provides the System Kernel, Domain Registry, Command Bus, Event Store, State Store, Snapshot Store, orchestration, configuration, security, trust and safety, scheduling, notifications, integrations, AI, reasoning, knowledge, memory, observability, QA, recovery, workflow, and mission primitives.
+
+Career OS runs on that platform as a career-management product for job intelligence, application packets, relationships, documents, interviews, follow-ups, and career growth.
+
+## Architecture
+
+Every domain follows:
+
+```text
+Domain → Manager → Capability → Worker → Tool → Event → State Projection → UI Workspace
+```
+
+The platform is designed so future products such as Sales OS, Grant OS, Real Estate OS, Recruiting OS, Client Acquisition OS, Agency Operations OS, Compliance OS, and Healthcare Operations OS can reuse the same architecture later.
 
 ## Phase 1 foundation
 
 - Next.js dashboard shell with workspaces for missions, jobs, applications, relationships, documents, follow-ups, settings, health, and domain registry.
 - Worker app scaffold using BullMQ and Redis.
 - Prisma/Postgres schema covering events, state, snapshots, companies, jobs, applications, documents, people, email, calendar, follow-up, and intelligence records.
-- Domain registry and placeholders for all 57 required domains.
+- Domain registry and placeholders for required domains.
 - Greenhouse and Lever collectors, Ashby placeholder, manual URL importer, job normalization, remote classification, clearance segmentation, and basic fit scoring.
+
+## Phase 2 foundation
+
+- Job Intelligence pipeline scaffold.
+- Application Packet service scaffold.
+- Resume and cover-letter placeholder generation.
+- Relationship dedupe scaffold.
+- Daily Mission v2 surfaces.
+- API route scaffolds for pipeline, packets, relationships, and mission data.
+
+## Phase 3 durable stores
+
+- Prisma-backed Event Store for permanent event history.
+- Prisma-backed State Store for current truth projections.
+- Prisma-backed Snapshot Store for point-in-time source data with checksums.
+- In-memory store implementations preserved for tests and lightweight local usage.
+- Read API routes for `/api/events`, `/api/state`, and `/api/snapshots`.
+
+## Phase 4 command execution
+
+- Shared `CareerCommand` and `CommandResult` contracts.
+- Command Bus for handler registration and command execution.
+- Orchestrator for registry-backed domain routing and command lifecycle audit events.
+- Job pipeline, application packet, and relationship dedupe API routes submit commands instead of calling services directly.
 
 ## Safety rules
 
-Career OS requires human approval before sending emails, submitting applications, answering sensitive questions, contacting recruiters for the first time, modifying the master profile, or uploading files to unknown sites. LinkedIn scraping and auto-submit are intentionally excluded from Phase 1.
+Career OS requires human approval before sending emails, submitting applications, answering sensitive questions, contacting recruiters for the first time, modifying the master profile, exporting AI-generated documents for real use, or uploading files to unknown sites.
+
+LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser automation, and auto-submit are intentionally excluded from the current foundation.
+
+## Governance docs
+
+- `docs/ARCHITECTURE_BIBLE.md`
+- `docs/CONSTITUTION.md`
+- `docs/DEVELOPER_GUIDE.md`
+- `docs/ADR/0001-domain-architecture.md`
+- `docs/ADR/0002-event-state-snapshot-stores.md`
+- `docs/PHASE-03-DURABLE-STORES.md`
+- `docs/PHASE-04-ORCHESTRATOR-COMMAND-BUS.md`
+- `docs/ADR/0003-command-bus-orchestrator.md`
 
 ## Commands
 
 ```bash
 npm install
 npm run typecheck
-npm run build
+npm test
+npx prisma validate
+git diff --check
+git status --short
 ```

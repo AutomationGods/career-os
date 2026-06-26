@@ -1,1 +1,1 @@
-export const commands = ["resume-factory.execute"];
+export const commands = ["resume.generate_placeholder"];

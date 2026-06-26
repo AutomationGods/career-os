@@ -1,13 +1,59 @@
-# ROADMAP
+# Roadmap
 
-This document captures the Career OS Phase 1 foundation from the PRD. The platform is organized as Domain → Manager → Capabilities → Workers → Tools → Events → State Projections → UI Workspaces.
+Career OS is the first flagship application on a reusable event-driven automation platform.
 
-- Event Store preserves permanent history.
-- State Store maintains current truth.
-- Snapshot Store preserves historical copies.
-- Domain Registry lets managers, capabilities, workers, tools, commands, events, permissions, dependencies, status, and versions evolve without changing the orchestrator.
-- Human approval is required for sensitive actions; auto-submit and LinkedIn scraping are not implemented.
+## Completed foundation
 
-## Phase 2 update
+### Phase 1 — Platform and Career OS scaffold
 
-Phase 2 adds the Job Intelligence Pipeline, Application Packet service, Resume Factory placeholders, Cover Letter placeholders, Relationship Intelligence dedupe, Daily Mission v2, and API/UI surfaces. Gmail, Calendar, browser automation, Chrome extension work, LinkedIn scraping, proxy scraping, CAPTCHA bypassing, and auto-submit remain explicitly out of scope.
+- Monorepo scaffold.
+- Next.js dashboard shell.
+- Worker scaffold with BullMQ/Redis.
+- Prisma/Postgres schema.
+- Domain registry placeholders.
+- Initial job collection and classification scaffolds.
+
+### Phase 2 — Job Intelligence and Application Factory scaffold
+
+- Job Intelligence pipeline scaffold.
+- Application Packet service scaffold.
+- Resume and cover-letter placeholders.
+- Relationship dedupe scaffold.
+- Daily Mission v2 surfaces.
+
+### Phase 3 — Durable stores
+
+- Prisma-backed Event Store.
+- Prisma-backed State Store.
+- Prisma-backed Snapshot Store.
+- In-memory store implementations preserved for tests.
+- Durable job pipeline plumbing through store interfaces.
+- Read API routes for events, state projections, and snapshots.
+
+### Phase 4 — Orchestrator and Command Bus
+
+- Shared command contract.
+- Command Bus handler registration and execution.
+- Orchestrator domain routing and permission placeholder.
+- Command lifecycle audit events.
+- Job pipeline route converted to command submission.
+- Packet and relationship command routes wired through the command boundary.
+
+## Next recommended foundation work
+
+Implement explicit human approval gates and permission policy enforcement for sensitive actions.
+
+## Explicitly deferred
+
+Do not implement these until the foundation is stable and approval gates are enforced:
+
+- Gmail sync
+- Google Calendar sync
+- email sending
+- Chrome extension
+- browser autofill
+- auto-submit
+- LinkedIn scraping
+- proxy scraping
+- CAPTCHA bypassing
+- full AI resume generation

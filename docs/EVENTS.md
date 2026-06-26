@@ -1,13 +1,78 @@
-# EVENTS
+# Events
 
-This document captures the Career OS Phase 1 foundation from the PRD. The platform is organized as Domain → Manager → Capabilities → Workers → Tools → Events → State Projections → UI Workspaces.
+Events record what happened in the platform.
 
-- Event Store preserves permanent history.
-- State Store maintains current truth.
-- Snapshot Store preserves historical copies.
-- Domain Registry lets managers, capabilities, workers, tools, commands, events, permissions, dependencies, status, and versions evolve without changing the orchestrator.
-- Human approval is required for sensitive actions; auto-submit and LinkedIn scraping are not implemented.
+Career OS uses events to make job pipeline decisions, application packet updates, relationship changes, and future automation behavior auditable.
 
-## Phase 2 update
+## Event envelope
 
-Phase 2 adds the Job Intelligence Pipeline, Application Packet service, Resume Factory placeholders, Cover Letter placeholders, Relationship Intelligence dedupe, Daily Mission v2, and API/UI surfaces. Gmail, Calendar, browser automation, Chrome extension work, LinkedIn scraping, proxy scraping, CAPTCHA bypassing, and auto-submit remain explicitly out of scope.
+Every event supports:
+
+- `id`
+- `eventType`
+- `entityType`
+- `entityId`
+- `domain`
+- `manager`
+- `capability`
+- `worker`
+- `userId`
+- `payload`
+- `evidence`
+- `confidence`
+- `modelUsed`
+- `promptVersion`
+- `createdAt`
+
+Required fields:
+
+- `eventType`
+- `entityType`
+- `entityId`
+- `domain`
+
+`payload` defaults to `{}`.
+
+## Durable Event Store
+
+Use `EventStore` as the contract.
+
+Available implementations:
+
+- `InMemoryEventStore`
+- `PrismaEventStore`
+
+Required operations:
+
+- `append(event)`
+- `appendMany(events)`
+- `getById(id)`
+- `listByEntity(entityType, entityId)`
+- `listByType(eventType)`
+- `listByDomain(domain)`
+- `listRecent(limit)`
+- `listByUser(userId)`
+
+## Command lifecycle events
+
+The Orchestrator emits command lifecycle events for workflow execution:
+
+- `command.received`
+- `command.accepted`
+- `command.completed`
+- `command.failed`
+- `command.rejected`
+
+Lifecycle event payloads include command id, command type, requestedBy, domain, entity type, entity id, status, and error details when relevant.
+
+## Event and state relationship
+
+A meaningful event should update a state projection unless there is a documented reason not to.
+
+State projections should preserve `sourceEventId` when possible.
+
+## Safety
+
+Events may record prepared drafts, placeholders, and recommendations.
+
+Events must not imply that an email was sent, an application was submitted, or a browser action occurred unless a future approved feature explicitly performs that action.

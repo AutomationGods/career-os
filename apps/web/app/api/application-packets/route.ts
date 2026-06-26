@@ -1,3 +1,21 @@
-import { createApplicationPacket, listApplicationPackets, normalizeJob, segmentJob, scoreFit } from "@career-os/domains";
-export async function GET() { return Response.json({ applicationPackets: listApplicationPackets() }); }
-export async function POST(request: Request) { const body = await request.json(); const selectedJob = normalizeJob(body.selectedJob ?? body.job ?? { title: "Untitled role", company: "Unknown company", source: "api" }); const packet = createApplicationPacket({ jobId: body.jobId ?? `job_${Date.now()}`, companyId: body.companyId, personId: body.personId, selectedJob, selectedCompany: body.selectedCompany ?? { id: body.companyId, name: selectedJob.company }, selectedPerson: body.selectedPerson, fitScoreSummary: body.fitScoreSummary ?? { score: scoreFit(selectedJob), segment: segmentJob(selectedJob), highlights: [] }, notes: body.notes }); return Response.json(packet, { status: 201 }); }
+import { listApplicationPackets } from "@career-os/domains";
+import { createCommand, createDefaultCommandBus } from "@career-os/orchestration";
+import { commandResult } from "../_lib/responses";
+
+export async function GET() {
+  return Response.json({ ok: true, data: { applicationPackets: listApplicationPackets() } });
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const command = createCommand({
+    type: "application_packets.create",
+    requestedBy: "api",
+    userId: body.userId,
+    entityType: "job",
+    entityId: body.jobId,
+    payload: body
+  });
+  const result = await createDefaultCommandBus().execute(command);
+  return commandResult(result, 201, 400);
+}
