@@ -48,6 +48,14 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - Orchestrator for registry-backed domain routing and command lifecycle audit events.
 - Job pipeline, application packet, and relationship dedupe API routes submit commands instead of calling services directly.
 
+## Phase 5 human approval gates
+
+- Permission policy service returns allowed, denied, or requires-approval decisions.
+- Sensitive commands create approval requests instead of executing automatically.
+- Approval lifecycle events preserve audit history.
+- Approval API routes and a basic `/approvals` page expose pending and decided requests.
+- Trusted mode placeholders remain disabled.
+
 ## Safety rules
 
 Career OS requires human approval before sending emails, submitting applications, answering sensitive questions, contacting recruiters for the first time, modifying the master profile, exporting AI-generated documents for real use, or uploading files to unknown sites.
@@ -63,12 +71,15 @@ LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser aut
 - `docs/ADR/0002-event-state-snapshot-stores.md`
 - `docs/PHASE-03-DURABLE-STORES.md`
 - `docs/PHASE-04-ORCHESTRATOR-COMMAND-BUS.md`
+- `docs/PHASE-05-HUMAN-APPROVAL-GATES.md`
 - `docs/ADR/0003-command-bus-orchestrator.md`
+- `docs/ADR/0004-human-approval-gates.md`
 
 ## Commands
 
 ```bash
 npm install
+npm run lint
 npm run typecheck
 npm test
 npx prisma validate

@@ -1,6 +1,14 @@
 import { domainRegistry } from "@career-os/domains";
 
-const workspaces = [
+function toWorkspaceSlug(label: string) {
+  return label
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+const workspaceLabels = [
   "Today’s Mission",
   "Jobs",
   "Companies",
@@ -15,6 +23,7 @@ const workspaces = [
   "Skill Gaps",
   "Settings",
   "System Health",
+  "Approval Requests",
   "Application Packets",
   "Packet Detail",
   "Relationships",
@@ -22,6 +31,9 @@ const workspaces = [
   "Job Pipeline Results",
   "Admin / Domain Registry"
 ];
+
+const workspaces = workspaceLabels.map((label) => ({ label, id: toWorkspaceSlug(label) }));
+const primaryWorkspaceIds = new Set(["todays-mission", "jobs", "applications", "admin-domain-registry"]);
 
 const missionCards = [
   "top remote commercial jobs",
@@ -63,8 +75,8 @@ export default function Page() {
         <div className="brand">Career OS</div>
         <nav className="nav">
           {workspaces.map((workspace) => (
-            <a key={workspace} href={`#${workspace}`}>
-              {workspace}
+            <a key={workspace.id} href={`#${workspace.id}`}>
+              {workspace.label}
             </a>
           ))}
         </nav>
@@ -76,7 +88,7 @@ export default function Page() {
           Event-driven dashboard shell with human approval gates; no auto-submit and no LinkedIn scraping.
         </p>
 
-        <section id="Today’s Mission" className="section">
+        <section id="todays-mission" className="section">
           <h2>Today’s Mission</h2>
           <div className="grid">
             {missionCards.map((item) => (
@@ -89,7 +101,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="Jobs" className="section">
+        <section id="jobs" className="section">
           <h2>Jobs</h2>
           <div className="grid">
             {jobSections.map((section) => (
@@ -101,7 +113,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="Applications" className="section">
+        <section id="applications" className="section">
           <h2>Applications</h2>
           <div className="grid">
             {appSections.map((section) => (
@@ -110,7 +122,18 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="Admin / Domain Registry" className="section">
+        {workspaces
+          .filter((workspace) => !primaryWorkspaceIds.has(workspace.id))
+          .map((workspace) => (
+            <section id={workspace.id} className="section" key={workspace.id}>
+              <h2>{workspace.label}</h2>
+              <div className="card">
+                <span className="muted">Workspace navigation target.</span>
+              </div>
+            </section>
+          ))}
+
+        <section id="admin-domain-registry" className="section">
           <h2>Domain Registry</h2>
           <div className="grid">
             {domainRegistry.map((domain) => (

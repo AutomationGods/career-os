@@ -20,7 +20,7 @@ export function fail(message: string, code = "REQUEST_FAILED", status = 500) {
 
 export function commandResult(result: CommandResult, successStatus = 200, failureStatus = 400) {
   if (!result.ok) {
-    return Response.json({ ok: false, error: result.error, command: { id: result.commandId, status: result.status } }, { status: failureStatus });
+    return Response.json({ ok: false, error: result.error, command: { id: result.commandId, status: result.status, approvalRequestId: result.approvalRequestId } }, { status: failureStatus });
   }
 
   return Response.json({ ok: true, data: { commandId: result.commandId, status: result.status, result: result.data } }, { status: successStatus });

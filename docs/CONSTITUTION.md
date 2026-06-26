@@ -12,16 +12,17 @@ These rules apply to the platform layer and to every product built on it.
 4. Every meaningful action emits an event.
 5. Every important event updates state or intentionally does not with a documented reason.
 6. Business logic does not live in UI components.
-7. Sensitive actions require approval.
-8. No auto-submit without explicit trusted mode.
-9. No email sending without approval.
-10. No LinkedIn scraping as a core feature.
-11. No CAPTCHA bypassing.
-12. No fake experience, fake certifications, fake clearance, or invented job facts.
-13. Every AI-generated document must be versioned.
-14. Every AI decision must preserve evidence.
-15. Every domain must be registered.
-16. Every new capability must define inputs, outputs, permissions, events, and tests.
+7. Sensitive actions require approval through the Orchestrator approval-gate layer.
+8. Trusted mode is disabled until explicitly implemented and reviewed.
+9. No auto-submit without explicit trusted mode.
+10. No email sending without approval.
+11. No LinkedIn scraping as a core feature.
+12. No CAPTCHA bypassing.
+13. No fake experience, fake certifications, fake clearance, or invented job facts.
+14. Every AI-generated document must be versioned.
+15. Every AI decision must preserve evidence.
+16. Every domain must be registered.
+17. Every new capability must define inputs, outputs, permissions, events, and tests.
 
 ## Platform-first rule
 
@@ -62,3 +63,5 @@ UI components do not own business decisions, scoring logic, classification logic
 Career OS optimizes for truthful, human-approved career operations.
 
 The system may prepare drafts, packets, placeholders, classifications, and recommendations. It must not represent generated content as user-approved truth until the user approves it.
+
+Sensitive permissions such as `send_email`, `submit_application`, `use_browser`, `write_calendar`, `upload_file`, `answer_sensitive_questions`, `modify_master_profile`, and `export_document_for_submission` must return `requires_approval` or `rejected` before any tool executes.

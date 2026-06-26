@@ -134,7 +134,7 @@ APIs, workers, schedulers, and UI actions submit commands to the Command Bus.
 
 The Command Bus validates command shape, resolves a registered handler, executes it, and returns a normalized command result.
 
-The Orchestrator is the traffic controller behind the command boundary. It resolves the owning domain from the Domain Registry, checks permission placeholders, routes to a domain manager, emits command lifecycle events, and returns the result.
+The Orchestrator is the traffic controller behind the command boundary. It resolves the owning domain from the Domain Registry, evaluates permission policy, creates approval requests for sensitive commands, routes allowed commands to a domain manager, emits command lifecycle events, and returns the result.
 
 ## Command and event separation
 
@@ -142,7 +142,7 @@ Commands request work. Events record what happened.
 
 A command may fail validation and emit no domain event. A completed meaningful action must emit an event with evidence, confidence, timestamp, domain, manager, capability, and worker where available.
 
-Command lifecycle events include `command.received`, `command.accepted`, `command.completed`, `command.failed`, and `command.rejected`.
+Command lifecycle events include `command.received`, `command.accepted`, `command.completed`, `command.failed`, `command.rejected`, `command.requires_approval`, `command.approval_granted`, and `command.approval_denied`.
 
 ## Event Store role
 
@@ -184,9 +184,9 @@ API routes should stay thin: build a command, submit it to the Command Bus, and 
 
 ## Permission engine role
 
-The permission engine checks whether a command is allowed before execution.
+The permission engine checks whether a command is allowed, denied, or requires approval before execution.
 
-Sensitive actions require explicit approval before execution.
+Sensitive actions create an `ApprovalRequest` and return `requires_approval`; they do not execute until a later approved flow exists.
 
 ## Human approval gates
 
@@ -198,7 +198,10 @@ The platform requires approval before:
 - answering sensitive questions
 - modifying the master profile
 - uploading files to unknown sites
-- exporting AI-generated documents for real use
+- exporting AI-generated documents for submission
+- using browser automation
+- writing calendar events
+- auto-sending follow-ups
 
 ## What must never happen
 

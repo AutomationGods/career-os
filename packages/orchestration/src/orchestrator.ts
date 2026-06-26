@@ -12,22 +12,20 @@ import {
 import { eventStore, prismaEventStore, type CareerEventInput, type EventStore } from "@career-os/events";
 import type { SnapshotStore } from "@career-os/snapshots";
 import { prismaSnapshotStore, snapshotStore } from "@career-os/snapshots";
-import type { CareerCommand, CommandResult, DomainExecutionContext, DomainManagerContract, PermissionService } from "@career-os/shared";
+import type { CareerCommand, CommandResult, DomainExecutionContext, DomainManagerContract, PermissionDecision, PermissionService } from "@career-os/shared";
 import type { StateStore } from "@career-os/state";
 import { prismaStateStore, stateStore } from "@career-os/state";
+import type { ApprovalRequestService } from "./approvals";
+import { InMemoryApprovalRequestService, PrismaApprovalRequestService } from "./approvals";
 import { CommandBus } from "./command-bus";
+import { getPolicyCommandTypes, PermissionPolicyService } from "./permissions";
 
 export interface OrchestratorContext extends DomainExecutionContext {
   eventStore: EventStore;
   stateStore: StateStore;
   snapshotStore: SnapshotStore;
   permissions?: PermissionService;
-}
-
-export class AllowAllPermissionService implements PermissionService {
-  canExecute() {
-    return true;
-  }
+  approvals?: ApprovalRequestService;
 }
 
 class ApplicationPacketCommandManager implements DomainManagerContract {
@@ -162,16 +160,36 @@ export class Orchestrator {
   async execute(command: CareerCommand): Promise<CommandResult> {
     await this.emitCommandEvent(command, "command.received", "accepted");
     const domain = this.resolveDomain(command);
-    if (!domain) {
+    const decision = await (this.context.permissions ?? new PermissionPolicyService()).evaluate(command);
+
+    if (decision.status === "denied") {
+      const result = this.rejected(command, "COMMAND_DENIED", decision.reason);
+      await this.emitCommandEvent(command, "command.rejected", result.status, result.error, domain?.slug, decision);
+      return result;
+    }
+
+    const isProtectedPolicyCommand = getPolicyCommandTypes().includes(command.type);
+    if (!domain && !isProtectedPolicyCommand) {
       const result = this.rejected(command, "COMMAND_DOMAIN_NOT_REGISTERED", `No registered domain command found for ${command.type}`);
       await this.emitCommandEvent(command, "command.rejected", result.status, result.error);
       return result;
     }
 
-    const allowed = await (this.context.permissions ?? new AllowAllPermissionService()).canExecute(command);
-    if (!allowed) {
-      const result = this.rejected(command, "COMMAND_REQUIRES_APPROVAL", `${command.type} requires approval`);
-      result.status = "requires_approval";
+    if (decision.status === "requires_approval") {
+      const approval = await (this.context.approvals ?? new InMemoryApprovalRequestService(this.context.eventStore)).createForCommand(command, decision);
+      const result: CommandResult = {
+        ok: false,
+        status: "requires_approval",
+        commandId: command.id,
+        approvalRequestId: approval.id,
+        error: { code: "APPROVAL_REQUIRED", message: "This command requires user approval." }
+      };
+      await this.emitCommandEvent(command, "command.requires_approval", result.status, result.error, domain?.slug, decision, approval.id);
+      return result;
+    }
+
+    if (!domain) {
+      const result = this.rejected(command, "COMMAND_DOMAIN_NOT_REGISTERED", `No registered domain command found for ${command.type}`);
       await this.emitCommandEvent(command, "command.rejected", result.status, result.error);
       return result;
     }
@@ -179,11 +197,11 @@ export class Orchestrator {
     const manager = this.managers.get(command.type);
     if (!manager || !manager.canHandle(command)) {
       const result = this.rejected(command, "COMMAND_HANDLER_NOT_FOUND", `No manager can handle ${command.type}`);
-      await this.emitCommandEvent(command, "command.rejected", result.status, result.error);
+      await this.emitCommandEvent(command, "command.rejected", result.status, result.error, domain.slug, decision);
       return result;
     }
 
-    await this.emitCommandEvent(command, "command.accepted", "accepted", undefined, domain.slug);
+    await this.emitCommandEvent(command, "command.accepted", "accepted", undefined, domain.slug, decision);
     try {
       const result = await manager.handle({ ...command, domain: domain.slug }, this.context);
       await this.emitCommandEvent(command, result.ok ? "command.completed" : "command.failed", result.status, result.error, domain.slug);
@@ -212,7 +230,7 @@ export class Orchestrator {
     return { ok: false, status: "rejected", commandId: command.id, error: { code, message } };
   }
 
-  private async emitCommandEvent(command: CareerCommand, eventType: string, status: string, error?: unknown, domain = command.domain ?? "orchestration") {
+  private async emitCommandEvent(command: CareerCommand, eventType: string, status: string, error?: unknown, domain = command.domain ?? "orchestration", decision?: PermissionDecision, approvalRequestId?: string) {
     const event: CareerEventInput = {
       eventType,
       entityType: command.entityType ?? "command",
@@ -230,6 +248,10 @@ export class Orchestrator {
         entityType: command.entityType,
         entityId: command.entityId,
         status,
+        approvalRequestId,
+        permission: decision?.permission,
+        riskLevel: decision?.riskLevel,
+        reason: decision?.reason,
         error
       },
       confidence: eventType === "command.failed" ? 1 : undefined
@@ -253,18 +275,31 @@ export function createOrchestrator(context: OrchestratorContext) {
 
 export function createCommandBus(orchestrator: Orchestrator) {
   const bus = new CommandBus();
-  for (const commandType of orchestrator.listCommandTypes()) {
+  const commandTypes = new Set([...orchestrator.listCommandTypes(), ...getPolicyCommandTypes()]);
+  for (const commandType of commandTypes) {
     bus.registerHandler(commandType, (command) => orchestrator.execute(command));
   }
   return bus;
 }
 
 export function createDefaultOrchestrator() {
-  return createOrchestrator({ eventStore: prismaEventStore, stateStore: prismaStateStore, snapshotStore: prismaSnapshotStore });
+  return createOrchestrator({
+    eventStore: prismaEventStore,
+    stateStore: prismaStateStore,
+    snapshotStore: prismaSnapshotStore,
+    permissions: new PermissionPolicyService(),
+    approvals: new PrismaApprovalRequestService(prismaEventStore)
+  });
 }
 
 export function createInMemoryOrchestrator() {
-  return createOrchestrator({ eventStore, stateStore, snapshotStore });
+  return createOrchestrator({
+    eventStore,
+    stateStore,
+    snapshotStore,
+    permissions: new PermissionPolicyService(),
+    approvals: new InMemoryApprovalRequestService(eventStore)
+  });
 }
 
 export function createDefaultCommandBus() {

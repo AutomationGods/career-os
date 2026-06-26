@@ -39,9 +39,18 @@ Career OS is the first flagship application on a reusable event-driven automatio
 - Job pipeline route converted to command submission.
 - Packet and relationship command routes wired through the command boundary.
 
+### Phase 5 — Human approval gates
+
+- Permission policy service for allowed, denied, and approval-required commands.
+- Approval Request service with in-memory and Prisma-backed adapters.
+- Orchestrator approval checks before command execution.
+- Approval lifecycle events and approval API routes.
+- Basic Approval Requests UI page.
+- Trusted mode placeholders remain disabled.
+
 ## Next recommended foundation work
 
-Implement explicit human approval gates and permission policy enforcement for sensitive actions.
+Implement resumable approved-command execution and connect approval decisions to queued command replay.
 
 ## Explicitly deferred
 

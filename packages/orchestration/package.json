@@ -6,6 +6,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
+    "@career-os/config": "0.1.0",
+    "@career-os/db": "0.1.0",
     "@career-os/domains": "0.1.0",
     "@career-os/events": "0.1.0",
     "@career-os/shared": "0.1.0",

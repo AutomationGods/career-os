@@ -195,17 +195,31 @@ model AuditLog {
 }
 
 model ApprovalRequest {
-  id        String    @id @default(cuid())
-  userId    String
-  action    String
-  reason    String?
-  status    String    @default("pending")
-  payload   Json?
-  createdAt DateTime  @default(now())
-  decidedAt DateTime?
+  id              String    @id @default(cuid())
+  userId          String
+  commandId       String
+  commandType     String
+  permission      String
+  entityType      String?
+  entityId        String?
+  status          String    @default("pending")
+  riskLevel       String
+  reason          String
+  requestPayload  Json?
+  decisionPayload Json?
+  requestedBy     String
+  requestedAt     DateTime  @default(now())
+  decidedAt       DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([userId])
+  @@index([commandId])
+  @@index([commandType])
+  @@index([permission])
   @@index([status])
+  @@index([entityType, entityId])
   @@index([createdAt])
 }
 

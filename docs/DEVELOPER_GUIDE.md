@@ -90,6 +90,8 @@ export const commands = ["jobs.run_pipeline"];
 
 Register a handler through the Orchestrator/Command Bus layer. API routes should create a `CareerCommand` and call `CommandBus.execute(command)` instead of calling domain services directly.
 
+Add a permission mapping in `packages/orchestration/src/permissions.ts`. If the command can send, submit, upload, browse, write calendar data, contact recruiters, answer sensitive questions, or modify the master profile, default to `requires_approval`.
+
 ## Add an event
 
 Add the event name to `events.ts` and the domain registry definition.
@@ -133,6 +135,16 @@ Use `InMemorySnapshotStore` for tests and `PrismaSnapshotStore` for durable API/
 
 Snapshot types should describe the captured source, for example `job.description_snapshot` or `application.packet_snapshot`.
 
+## Add an approval-gated command
+
+1. Define the command in the owning domain.
+2. Map the command to a permission in the permission policy.
+3. Require approval for sensitive permissions.
+4. Test allowed, denied, and `requires_approval` paths.
+5. Do not call tools directly from UI or API routes.
+
+Approval decisions emit `approval.requested`, `approval.approved`, `approval.rejected`, `approval.cancelled`, `approval.expired`, `command.approval_granted`, and `command.approval_denied`.
+
 ## Add an API route
 
 API routes should validate input, build a command, submit it to the Command Bus, and return consistent JSON.
@@ -163,6 +175,7 @@ UI components should not contain domain business logic.
 Run these before opening a PR:
 
 ```bash
+npm run lint
 npm run typecheck
 npm test
 npx prisma validate

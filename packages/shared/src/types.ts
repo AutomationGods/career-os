@@ -2,6 +2,39 @@ export type DomainStatus = "placeholder" | "partial" | "implemented" | "deprecat
 
 export type CommandStatus = "accepted" | "completed" | "failed" | "rejected" | "requires_approval";
 export type CommandRequester = "user" | "system" | "worker" | "api" | "scheduler";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type PermissionDecisionStatus = "allowed" | "denied" | "requires_approval";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "expired" | "cancelled";
+
+export type PermissionName =
+  | "read_jobs"
+  | "write_jobs"
+  | "read_gmail"
+  | "write_gmail_draft"
+  | "send_email"
+  | "read_calendar"
+  | "write_calendar"
+  | "generate_resume"
+  | "export_document"
+  | "export_document_for_submission"
+  | "use_browser"
+  | "upload_file"
+  | "submit_application"
+  | "contact_recruiter"
+  | "contact_recruiter_first_time"
+  | "answer_sensitive_questions"
+  | "modify_master_profile"
+  | "create_followup"
+  | "schedule_followup"
+  | "auto_send_followup";
+
+export interface PermissionDecision {
+  status: PermissionDecisionStatus;
+  permission: PermissionName | string;
+  reason: string;
+  riskLevel: RiskLevel;
+  requiresApproval: boolean;
+}
 
 export interface CareerCommand<TPayload = unknown> {
   id: string;
@@ -32,6 +65,7 @@ export interface CommandResult<TData = unknown> {
   error?: CommandError;
   emittedEvents?: string[];
   updatedProjections?: string[];
+  approvalRequestId?: string;
 }
 
 export interface DomainCommand {
@@ -75,7 +109,37 @@ export interface Logger {
 }
 
 export interface PermissionService {
-  canExecute(command: CareerCommand): boolean | Promise<boolean>;
+  evaluate(command: CareerCommand): PermissionDecision | Promise<PermissionDecision>;
+}
+
+export interface ApprovalRequestInput {
+  id?: string;
+  userId?: string;
+  commandId: string;
+  commandType: string;
+  permission: string;
+  entityType?: string;
+  entityId?: string;
+  status?: ApprovalStatus;
+  riskLevel: RiskLevel;
+  reason: string;
+  requestPayload?: unknown;
+  decisionPayload?: unknown;
+  requestedBy: CommandRequester;
+  requestedAt?: Date;
+  decidedAt?: Date;
+  expiresAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface ApprovalRequestRecord extends ApprovalRequestInput {
+  id: string;
+  userId: string;
+  status: ApprovalStatus;
+  requestedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ConfigService {
