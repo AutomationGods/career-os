@@ -74,9 +74,17 @@ Career OS is the first flagship application on a reusable event-driven automatio
 - `profile_facts.review_queue` surfaces facts awaiting verification or blocking.
 - Resume Factory ignores needs-review import facts and continues to use verified Profile Facts only.
 
+### Phase 9 — Resume Factory v2
+
+- `/resumes` supports template selection and section ordering.
+- `GET /api/resume-templates` lists the ATS-friendly template catalog.
+- `resume.generate` writes `ResumeVersion` records with template and review-checklist metadata.
+- `resume.template_selected` and `resume.review_checklist_created` events preserve draft evidence.
+- Draft bullets still exactly match verified facts only; blocked claims appear as not claimed.
+
 ## Next recommended foundation work
 
-Build Resume Factory v2 templates and review checklists from the verified Profile Facts source of truth.
+Build local Markdown/DOCX document export from persisted resume drafts.
 
 ## Explicitly deferred
 

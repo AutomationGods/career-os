@@ -1,3 +1,4 @@
+import { InMemoryResumeVersionStore } from "@career-os/domains";
 import { InMemoryEventStore } from "@career-os/events";
 import { InMemorySnapshotStore } from "@career-os/snapshots";
 import { InMemoryStateStore } from "@career-os/state";
@@ -12,7 +13,8 @@ function createTestPlatform() {
   const stateStore = new InMemoryStateStore();
   const snapshotStore = new InMemorySnapshotStore();
   const approvals = new InMemoryApprovalRequestService(eventStore);
-  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals });
+  const resumeVersionStore = new InMemoryResumeVersionStore();
+  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals, resumeVersionStore });
   const bus = createCommandBus(orchestrator);
   return { eventStore, stateStore, snapshotStore, approvals, orchestrator, bus };
 }

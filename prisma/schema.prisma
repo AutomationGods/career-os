@@ -627,17 +627,23 @@ model MasterResume {
 }
 
 model ResumeVersion {
-  id             String       @id @default(cuid())
-  masterResumeId String
-  jobId          String?
-  companyId      String?
-  content        Json
-  templateId     String?
-  masterResume   MasterResume @relation(fields: [masterResumeId], references: [id])
+  id              String        @id @default(cuid())
+  masterResumeId  String?
+  jobId           String?
+  companyId       String?
+  content         Json
+  templateId      String?
+  templateKey     String?
+  sectionOrder    String[]
+  reviewChecklist Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  masterResume    MasterResume? @relation(fields: [masterResumeId], references: [id])
 
   @@index([masterResumeId])
   @@index([jobId])
   @@index([companyId])
+  @@index([templateKey])
 }
 
 model ResumeTemplate {

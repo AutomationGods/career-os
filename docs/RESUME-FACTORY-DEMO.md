@@ -1,6 +1,6 @@
 # Resume Factory Demo
 
-Use this page to test Resume Factory v1 visually without sending, uploading, submitting, or applying to anything.
+Use this page to test Resume Factory v2 visually without sending, uploading, submitting, or applying to anything.
 
 ## Run locally
 
@@ -11,26 +11,31 @@ npm run dev
 Open:
 
 ```text
+http://localhost:3000/master-resume
 http://localhost:3000/profile-facts
 http://localhost:3000/resumes
 ```
 
 ## Demo steps
 
-1. Open `http://localhost:3000/profile-facts`.
-2. Click `Seed Initial Profile Facts`.
-3. Confirm verified resume facts and blocked claims appear.
-4. Open `http://localhost:3000/resumes`.
-5. Confirm the page title says `Resume Factory`.
-6. Confirm the safety warning says the resume is a draft for local review only.
-7. Click `Generate Demo Splunk/Cribl Resume`.
-8. Confirm a command status appears.
-9. Confirm a resume version ID appears.
-10. Confirm a markdown resume preview appears.
-11. Confirm truthfulness status appears.
-12. Confirm keyword alignment appears.
-13. Confirm CISSP, Security+, and clearance are not invented.
-14. Confirm no email, upload, submit, or apply action happened.
+1. Open `http://localhost:3000/master-resume`.
+2. Click `Import + Safety Blocks`.
+3. Verify at least one Splunk or Cribl fact.
+4. Open `http://localhost:3000/profile-facts`.
+5. Confirm verified resume facts, needs-review facts, and blocked claims appear.
+6. Open `http://localhost:3000/resumes`.
+7. Confirm the page title says `Resume Factory`.
+8. Select `ATS Technical v2` or `Compact Technical v2`.
+9. Adjust the section-order text if desired.
+10. Click `Generate Demo Splunk/Cribl Resume`.
+11. Confirm a command status appears.
+12. Confirm a persisted version ID appears.
+13. Confirm a structured ATS-friendly resume preview appears.
+14. Confirm the review checklist appears.
+15. Confirm truthfulness status appears.
+16. Confirm keyword alignment appears.
+17. Confirm CISSP, Security+, and clearance are not invented.
+18. Confirm no email, upload, submit, or apply action happened.
 
 ## Expected keyword behavior
 
@@ -58,6 +63,14 @@ Blocked/no-claim keywords should include clearance-sensitive terms such as:
 - TS/SCI
 - Public Trust
 - Polygraph
+
+## v2 template behavior
+
+The preview should show ordered sections such as Professional Summary, Technical Skills, Experience Highlights, Certifications, and Additional Verified Facts.
+
+Every bullet should be copied from verified facts.
+
+Blocked claims should appear as not claimed, not as resume bullets.
 
 ## Safety limits
 

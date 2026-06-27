@@ -4,6 +4,7 @@ import { InMemoryStateStore } from "@career-os/state";
 import { describe, expect, it } from "vitest";
 import { InMemoryProfileFactsStore } from "../../identity/profile-facts-service";
 import { ResumeFactoryManager } from "../manager";
+import { InMemoryResumeVersionStore } from "../resume-version-store";
 
 function command(payload: Record<string, unknown>) {
   return {
@@ -18,12 +19,13 @@ function command(payload: Record<string, unknown>) {
   };
 }
 
-function createContext(profileFactsStore?: InMemoryProfileFactsStore) {
+function createContext(profileFactsStore?: InMemoryProfileFactsStore, resumeVersionStore = new InMemoryResumeVersionStore()) {
   return {
     eventStore: new InMemoryEventStore(),
     stateStore: new InMemoryStateStore(),
     snapshotStore: new InMemorySnapshotStore(),
-    profileFactsStore
+    profileFactsStore,
+    resumeVersionStore
   };
 }
 
@@ -55,6 +57,9 @@ describe("ResumeFactoryManager", () => {
     expect(result.data?.draft.content.includes("Built Terraform modules for AWS observability workloads.")).toBe(true);
     expect(result.data?.draft.content.includes("Administered Splunk and Cribl pipelines for production telemetry.")).toBe(true);
     expect(result.data?.draft.content.includes("Kubernetes")).toBe(false);
+    expect(result.data?.draft.templateKey).toBe("ats-technical-v2");
+    expect((result.data?.draft.reviewChecklist.length ?? 0) > 0).toBe(true);
+    expect(result.data?.resumeVersion?.id).toBe(result.data?.draft.id);
     expect(JSON.stringify(result.data?.guard.blockedClaims)).toBe(JSON.stringify([]));
   });
 
@@ -124,7 +129,7 @@ describe("ResumeFactoryManager", () => {
     expect(context.eventStore.listByType("resume.generated").length).toBe(0);
   });
 
-  it("emits resume.generated, writes resume.current_draft, and captures resume.source_input", async () => {
+  it("emits resume.generated, template/checklist events, writes projections, captures input, and persists a version", async () => {
     const manager = new ResumeFactoryManager();
     const context = createContext();
 
@@ -134,14 +139,34 @@ describe("ResumeFactoryManager", () => {
     );
 
     const generatedEvents = context.eventStore.listByType("resume.generated");
+    const templateEvents = context.eventStore.listByType("resume.template_selected");
+    const checklistEvents = context.eventStore.listByType("resume.review_checklist_created");
     const projection = context.stateStore.getProjection("application_packet", "packet-1", "resume.current_draft");
+    const reviewProjection = context.stateStore.getProjection("resume", result.data?.draft.id ?? "missing", "resume.review_queue");
     const snapshots = context.snapshotStore.listBySnapshotType("resume.source_input");
 
     expect(result.ok).toBe(true);
     expect(generatedEvents.length).toBe(1);
+    expect(templateEvents.length).toBe(1);
+    expect(checklistEvents.length).toBe(1);
     expect(projection?.projectionType).toBe("resume.current_draft");
+    expect(reviewProjection?.projectionType).toBe("resume.review_queue");
     expect(snapshots.length).toBe(1);
     expect(result.data?.sourceSnapshotId).toBe(snapshots[0]?.id);
+    expect(context.resumeVersionStore.getById(result.data?.draft.id ?? "missing")?.templateKey).toBe("ats-technical-v2");
+  });
+
+  it("lists templates and generates standalone review checklists", async () => {
+    const manager = new ResumeFactoryManager();
+    const context = createContext();
+
+    const templates = await manager.handle({ id: "command-templates", type: "resume.templates.list", requestedBy: "api", payload: {}, createdAt: new Date().toISOString() }, context);
+    const checklist = await manager.handle({ id: "command-checklist", type: "resume.review_checklist.generate", requestedBy: "api", entityId: "resume-1", payload: { sourceFactCount: 2, matchedFactCount: 1, missingKeywords: ["Kubernetes"], blockedProfileClaims: ["CISSP"], templateKey: "ats-technical-v2" }, createdAt: new Date().toISOString() }, context);
+
+    expect(templates.ok).toBe(true);
+    expect(JSON.stringify(templates.data).includes("ats-technical-v2")).toBe(true);
+    expect(checklist.ok).toBe(true);
+    expect(context.eventStore.listByType("resume.review_checklist_created").length).toBe(1);
   });
 
   it("does not emit forbidden external-action events", async () => {

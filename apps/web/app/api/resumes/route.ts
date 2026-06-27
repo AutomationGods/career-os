@@ -1,19 +1,6 @@
 import { createCommand, createDefaultCommandBus } from "@career-os/orchestration";
-import { z } from "zod";
 import { commandResult, fail } from "../_lib/responses";
-
-export const resumeGenerateRequestSchema = z.object({
-  userId: z.string().min(1).optional(),
-  jobId: z.string().min(1),
-  companyId: z.string().min(1),
-  applicationPacketId: z.string().min(1),
-  resumeVersionId: z.string().min(1).optional(),
-  verifiedFacts: z.array(z.string().min(1)).optional().default([]),
-  targetRole: z.string().min(1).optional(),
-  companyName: z.string().min(1).optional(),
-  jobDescription: z.string().min(1).optional(),
-  targetKeywords: z.array(z.string().min(1)).optional()
-});
+import { resumeGenerateRequestSchema } from "./schema";
 
 export async function POST(request: Request) {
   const parsed = resumeGenerateRequestSchema.safeParse(await request.json());

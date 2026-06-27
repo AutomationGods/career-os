@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { POST, resumeGenerateRequestSchema } from "../route";
+import { POST } from "../route";
+import { resumeGenerateRequestSchema } from "../schema";
 
 describe("resume route schema", () => {
   it("accepts safe resume generation requests", () => {
@@ -9,7 +10,9 @@ describe("resume route schema", () => {
       companyId: "company-1",
       applicationPacketId: "packet-1",
       targetRole: "Splunk Terraform Engineer",
-      verifiedFacts: ["Built Terraform modules for AWS observability workloads."]
+      verifiedFacts: ["Built Terraform modules for AWS observability workloads."],
+      templateKey: "ats-technical-v2",
+      sectionOrder: ["summary", "technical_skills", "experience_highlights"]
     });
 
     expect(parsed.success).toBe(true);

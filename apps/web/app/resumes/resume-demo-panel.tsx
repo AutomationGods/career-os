@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  DEFAULT_RESUME_TEMPLATE_KEY,
+  DEFAULT_SECTION_ORDER,
   DEMO_COMPANY_NAME,
   DEMO_JOB_DESCRIPTION,
   DEMO_TARGET_ROLE,
@@ -9,11 +11,13 @@ import {
   buildKeywordAlignment,
   buildResumeDemoPayload,
   resumeResultFromEnvelope,
+  resumeTemplatesFromEnvelope,
   uniqueStrings,
   type KeywordAlignmentView,
   type ResumeDemoFields,
   type ResumeDemoPayload,
-  type ResumeResultView
+  type ResumeResultView,
+  type ResumeTemplateView
 } from "./resume-demo-panel-model";
 
 async function readJson(response: Response) {
@@ -73,11 +77,15 @@ function LatestResult({ result, latestPayload }: { result?: ResumeResultView; la
       </div>
       <div className="card">
         <strong>Template key</strong>
-        <p className="muted">technical-resume-v1</p>
+        <p className="muted">{result.draft?.templateKey ?? latestPayload?.templateKey ?? "n/a"}</p>
       </div>
       <div className="card">
         <strong>Truthfulness status</strong>
         <p className="muted">{result.guard?.ok ? "passed" : "blocked or unavailable"}</p>
+      </div>
+      <div className="card">
+        <strong>Persisted version</strong>
+        <p className="muted">{result.resumeVersionId ?? "n/a"}</p>
       </div>
       <div className="card">
         <strong>Source snapshot</strong>
@@ -106,63 +114,52 @@ function TruthfulnessGuard({ result }: { result?: ResumeResultView }) {
         <strong>Status</strong>
         <p className="muted">{guard ? (guard.ok ? "Passed: every draft bullet matched a verified fact." : "Blocked: unsupported claims detected.") : "Awaiting generation."}</p>
       </div>
-      <ListCard title="Blocked claims" items={guard?.blockedClaims ?? []} emptyText="No blocked claims reported." />
+      <ListCard title="Blocked claims" items={uniqueStrings([...(guard?.blockedClaims ?? []), ...(result?.blockedProfileClaims ?? [])])} emptyText="No blocked claims reported." />
       <ListCard title="Warnings" items={uniqueStrings([...(result?.warnings ?? []), ...(guard?.warnings ?? [])])} emptyText="No warnings returned yet." />
       <ListCard title="Grounded claims" items={uniqueStrings(guard?.groundedClaims ?? [])} emptyText="No grounded claims returned yet." />
     </div>
   );
 }
 
-function ResumePreview({ result, latestPayload, alignment }: { result?: ResumeResultView; latestPayload?: ResumeDemoPayload; alignment: KeywordAlignmentView }) {
-  if (!result?.draft) return <div className="card"><p className="muted">Resume preview will appear here after generation.</p></div>;
+function ReviewChecklist({ result }: { result?: ResumeResultView }) {
+  const checklist = result?.draft?.reviewChecklist ?? [];
+  return (
+    <div className="grid">
+      {checklist.map((item) => (
+        <div className="card" key={item.id}>
+          <strong>{item.label}</strong>
+          <p className="muted">status: {item.status}</p>
+          <p className="muted">{item.detail}</p>
+        </div>
+      ))}
+      {checklist.length === 0 ? <div className="card"><p className="muted">Review checklist will appear after generation.</p></div> : null}
+    </div>
+  );
+}
 
-  const verifiedFacts = uniqueStrings(result.draft.sourceFacts);
-  const verifiedSkills = uniqueStrings(alignment.verifiedMatches);
-  const technicalSkillNames = new Set(["splunk", "cribl", "siem", "linux", "terraform", "aws", "azure", "gcp"]);
-  const technicalSkills = verifiedSkills.filter((skill) => technicalSkillNames.has(skill.toLowerCase()));
-  const reviewNotes = uniqueStrings([...(result.warnings ?? []), ...(result.guard?.warnings ?? [])]);
+function ResumePreview({ result, latestPayload }: { result?: ResumeResultView; latestPayload?: ResumeDemoPayload; alignment: KeywordAlignmentView }) {
+  if (!result?.draft) return <div className="card"><p className="muted">Resume preview will appear here after generation.</p></div>;
 
   return (
     <div className="resume-preview">
       <header className="resume-header">
-        <p className="resume-kicker">Target Title</p>
+        <p className="resume-kicker">{result.draft.templateName ?? "ATS Technical v2"}</p>
         <h3>{latestPayload?.targetRole ?? "Resume draft"}</h3>
-        <p className="muted">Review-required draft assembled only from supplied verified facts.</p>
+        <p className="muted">Review-required draft assembled only from verified Profile Facts.</p>
       </header>
 
-      <section>
-        <h4>Professional Summary</h4>
-        <p>This local-review draft targets {latestPayload?.targetRole ?? "the selected role"} and only restates the verified facts listed in Experience Highlights.</p>
-      </section>
+      {result.draft.sections.map((section) => (
+        <section key={section.key ?? section.title}>
+          <h4>{section.title}</h4>
+          <ul>
+            {section.bullets.map((fact) => <li key={fact}>{fact}</li>)}
+          </ul>
+        </section>
+      ))}
 
       <section>
-        <h4>Core Skills</h4>
-        <p>{verifiedSkills.length > 0 ? verifiedSkills.join(" · ") : "No verified skills matched yet."}</p>
-      </section>
-
-      <section>
-        <h4>Technical Skills</h4>
-        <p>{technicalSkills.length > 0 ? technicalSkills.join(" · ") : "No verified technical skills matched yet."}</p>
-      </section>
-
-      <section>
-        <h4>Experience Highlights</h4>
-        <ul>
-          {verifiedFacts.map((fact) => <li key={fact}>{fact}</li>)}
-        </ul>
-      </section>
-
-      <section>
-        <h4>Certifications</h4>
-        <p>No verified certifications supplied. CISSP and Security+ are missing/preferred keywords, not claimed.</p>
-      </section>
-
-      <section>
-        <h4>Review Notes</h4>
-        <ul>
-          {reviewNotes.map((note) => <li key={note}>{note}</li>)}
-          <li>Clearance and fake employer, date, metric, and certification claims are blocked from being claimed.</li>
-        </ul>
+        <h4>Blocked / Not Claimed</h4>
+        <p>{result.blockedProfileClaims.length > 0 ? result.blockedProfileClaims.join(" · ") : "No blocked Profile Fact claims were supplied."}</p>
       </section>
     </div>
   );
@@ -172,8 +169,12 @@ export default function ResumeDemoPanel() {
   const [fields, setFields] = useState<ResumeDemoFields>({
     targetRole: DEMO_TARGET_ROLE,
     companyName: DEMO_COMPANY_NAME,
-    jobDescription: DEMO_JOB_DESCRIPTION
+    jobDescription: DEMO_JOB_DESCRIPTION,
+    templateKey: DEFAULT_RESUME_TEMPLATE_KEY,
+    sectionOrder: DEFAULT_SECTION_ORDER
   });
+  const [templates, setTemplates] = useState<ResumeTemplateView[]>([]);
+  const [sectionOrderText, setSectionOrderText] = useState(DEFAULT_SECTION_ORDER.join(", "));
   const [latestPayload, setLatestPayload] = useState<ResumeDemoPayload | undefined>(undefined);
   const [result, setResult] = useState<ResumeResultView | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -181,8 +182,20 @@ export default function ResumeDemoPanel() {
 
   const alignment = useMemo(() => buildKeywordAlignment(latestPayload ?? buildResumeDemoPayload(fields), result), [fields, latestPayload, result]);
 
-  function updateField(field: keyof ResumeDemoFields, value: string) {
+  useEffect(() => {
+    void fetch("/api/resume-templates", { cache: "no-store" })
+      .then(readJson)
+      .then((body) => setTemplates(resumeTemplatesFromEnvelope(body)))
+      .catch(() => setTemplates([]));
+  }, []);
+
+  function updateField(field: "targetRole" | "companyName" | "jobDescription" | "templateKey", value: string) {
     setFields((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateSectionOrder(value: string) {
+    setSectionOrderText(value);
+    setFields((current) => ({ ...current, sectionOrder: value.split(",").map((item) => item.trim()).filter(Boolean) }));
   }
 
   async function generateDemoResume() {
@@ -209,7 +222,7 @@ export default function ResumeDemoPanel() {
 
       setStatusMessage("Resume draft generated for local review only. No external action was taken.");
     } catch (error) {
-      setResult({ reviewRequired: true, warnings: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
+      setResult({ reviewRequired: true, warnings: [], blockedProfileClaims: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
       setStatusMessage("Network/runtime error while calling /api/resumes.");
     } finally {
       setIsLoading(false);
@@ -235,6 +248,16 @@ export default function ResumeDemoPanel() {
             Job description
             <textarea rows={7} value={fields.jobDescription} onChange={(event) => updateField("jobDescription", event.target.value)} />
           </label>
+          <label>
+            Template
+            <select value={fields.templateKey} onChange={(event) => updateField("templateKey", event.target.value)}>
+              {(templates.length > 0 ? templates : [{ key: DEFAULT_RESUME_TEMPLATE_KEY, name: "ATS Technical v2", description: "Default local template", defaultSectionOrder: DEFAULT_SECTION_ORDER }]).map((template) => <option key={template.key} value={template.key}>{template.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Section order
+            <input value={sectionOrderText} onChange={(event) => updateSectionOrder(event.target.value)} />
+          </label>
           <button type="button" disabled={isLoading} onClick={() => void generateDemoResume()}>
             {isLoading ? "Generating Demo Resume..." : "Generate Demo Splunk/Cribl Resume"}
           </button>
@@ -256,6 +279,11 @@ export default function ResumeDemoPanel() {
       <section className="section">
         <h2>Truthfulness Guard</h2>
         <TruthfulnessGuard result={result} />
+      </section>
+
+      <section className="section">
+        <h2>Review Checklist</h2>
+        <ReviewChecklist result={result} />
       </section>
 
       <section className="section">

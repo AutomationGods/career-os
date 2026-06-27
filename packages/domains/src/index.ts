@@ -13,6 +13,8 @@ export * from "./identity/profile-facts-service";
 export * from "./identity/master-resume-service";
 export { ResumeFactoryManager } from "./resume-factory/manager";
 export type { ResumeGenerationRequest, ResumeGenerationResult, ResumeGenerationPlaceholder } from "./resume-factory/manager";
+export * from "./resume-factory/resume-templates";
+export * from "./resume-factory/resume-version-store";
 export {
   buildTechnicalResumeDraft,
   extractResumeKeywords,

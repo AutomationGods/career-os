@@ -54,6 +54,8 @@ export const protectedCommandPermissions: Record<string, PermissionName> = {
   "application_packets.generate_placeholders": "export_document",
   "resume.generate": "generate_resume",
   "resume.generate_placeholder": "generate_resume",
+  "resume.templates.list": "generate_resume",
+  "resume.review_checklist.generate": "generate_resume",
   "relationships.dedupe": "read_jobs",
   "email.send": "send_email",
   "gmail.read": "read_gmail",

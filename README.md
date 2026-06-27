@@ -82,6 +82,14 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - Blocked CISSP, Security+, and clearance claims shadow duplicate candidates.
 - Resume Factory continues to use verified Profile Facts only.
 
+## Phase 9 Resume Factory v2
+
+- `/resumes` now includes template selection, section-order controls, review checklist cards, and a structured ATS-friendly preview.
+- `GET /api/resume-templates` lists available templates.
+- `POST /api/resumes` accepts `templateKey`, `sectionOrder`, and optional `masterResumeId`.
+- Generated drafts persist to `ResumeVersion` with template metadata and checklist content.
+- Section bullets still copy verified facts exactly; needs-review and blocked claims are not claimed.
+
 ## Resume Factory local demo
 
 ```bash
@@ -111,6 +119,7 @@ LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser aut
 - `docs/PHASE-06-APPROVED-COMMAND-REPLAY.md`
 - `docs/PHASE-07-RESUME-FACTORY-V1.md`
 - `docs/PHASE-08-MASTER-RESUME-IMPORT-V1.md`
+- `docs/PHASE-09-RESUME-FACTORY-V2.md`
 - `docs/RESUME-FACTORY-DEMO.md`
 - `docs/ADR/0003-command-bus-orchestrator.md`
 - `docs/ADR/0004-human-approval-gates.md`
