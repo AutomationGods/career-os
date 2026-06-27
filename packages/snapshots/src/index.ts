@@ -50,11 +50,12 @@ export interface SnapshotStore {
 }
 
 type PrismaLike = {
-  snapshot: {
+  snapshot?: {
     create(args: unknown): Promise<unknown>;
     findUnique(args: unknown): Promise<unknown>;
     findMany(args: unknown): Promise<unknown[]>;
   };
+  $queryRawUnsafe?<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
 };
 
 function createSnapshotId() {
@@ -97,10 +98,19 @@ function normalizeSnapshot<T>(snapshot: SnapshotInput<T>, id = snapshot.id ?? cr
   };
 }
 
+function parseJsonValue(value: unknown) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
 function toRecord(row: unknown): SnapshotRecord | undefined {
   if (!row || typeof row !== "object") return undefined;
   const record = row as SnapshotRecord & { data?: unknown; content?: unknown; checksum?: string; hash?: string; createdAt?: Date; capturedAt?: Date };
-  const data = record.data ?? record.content ?? {};
+  const data = parseJsonValue(record.data ?? record.content ?? {});
   const digest = record.checksum ?? record.hash ?? checksum(data);
   const createdAt = new Date(record.createdAt ?? record.capturedAt ?? new Date());
   return {
@@ -192,17 +202,27 @@ export class PrismaSnapshotStore implements SnapshotStore {
 
   async captureSnapshot<T>(snapshot: SnapshotInput<T>) {
     const normalized = normalizeSnapshot(snapshot);
-    const row = await this.client.snapshot.create({
-      data: {
-        userId: normalized.userId,
-        entityType: normalized.entityType,
-        entityId: normalized.entityId,
-        snapshotType: normalized.snapshotType,
-        data: normalized.data,
-        checksum: normalized.checksum,
-        createdAt: normalized.createdAt
+    let row: unknown;
+    if (this.client.snapshot) {
+      try {
+        row = await this.client.snapshot.create({
+          data: {
+            userId: normalized.userId,
+            entityType: normalized.entityType,
+            entityId: normalized.entityId,
+            snapshotType: normalized.snapshotType,
+            data: normalized.data,
+            checksum: normalized.checksum,
+            createdAt: normalized.createdAt
+          }
+        });
+      } catch (error) {
+        if (!isMissingStalePrismaFieldError(error, "source")) throw error;
+        row = await this.rawCreate(normalized);
       }
-    });
+    } else {
+      row = await this.rawCreate(normalized);
+    }
     const record = toRecord(row) as SnapshotRecord<T> | undefined;
     if (!record) throw new Error("Failed to capture snapshot");
     return record;
@@ -213,19 +233,23 @@ export class PrismaSnapshotStore implements SnapshotStore {
   }
 
   async getSnapshot(id: string) {
-    return toRecord(await this.client.snapshot.findUnique({ where: { id } }));
+    if (this.client.snapshot) return toRecord(await this.client.snapshot.findUnique({ where: { id } }));
+    return toRecord(await this.rawFindFirst("WHERE id = $1", [id]));
   }
 
   async listByEntity(entityType: string, entityId: string) {
-    return toRecords(await this.client.snapshot.findMany({ where: { entityType, entityId }, orderBy: { createdAt: "desc" } }));
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { entityType, entityId }, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany('WHERE "entityType" = $1 AND "entityId" = $2 ORDER BY "createdAt" DESC', [entityType, entityId]));
   }
 
   async listBySnapshotType(snapshotType: string) {
-    return toRecords(await this.client.snapshot.findMany({ where: { snapshotType }, orderBy: { createdAt: "desc" } }));
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { snapshotType }, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany('WHERE "snapshotType" = $1 ORDER BY "createdAt" DESC', [snapshotType]));
   }
 
   async listRecent(limit: number) {
-    return toRecords(await this.client.snapshot.findMany({ take: limit, orderBy: { createdAt: "desc" } }));
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ take: limit, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany('ORDER BY "createdAt" DESC LIMIT $1', [limit]));
   }
 
   async compareSnapshots(snapshotA: SnapshotRecord | string, snapshotB: SnapshotRecord | string) {
@@ -234,6 +258,27 @@ export class PrismaSnapshotStore implements SnapshotStore {
     if (!left || !right) throw new Error("Snapshot not found for comparison");
     return compareSnapshotRecords(left, right);
   }
+
+  private async rawFindFirst(whereClause: string, values: unknown[]) {
+    const rows = await this.rawFindMany(`${whereClause} LIMIT 1`, values);
+    return rows[0];
+  }
+
+  private rawFindMany(whereClause: string, values: unknown[]) {
+    if (!this.client.$queryRawUnsafe) throw new Error("SNAPSHOT_PRISMA_CLIENT_UNAVAILABLE: Prisma Client does not expose raw query methods. Run `npx prisma generate` and restart `npm run dev`.");
+    return this.client.$queryRawUnsafe<unknown[]>(`SELECT * FROM "Snapshot" ${whereClause}`, ...values);
+  }
+
+  private rawCreate(record: SnapshotRecord) {
+    if (!this.client.$queryRawUnsafe) throw new Error("SNAPSHOT_PRISMA_CLIENT_UNAVAILABLE: Prisma Client does not expose raw query methods. Run `npx prisma generate` and restart `npm run dev`.");
+    return this.client.$queryRawUnsafe<unknown[]>(`INSERT INTO "Snapshot" (id, "userId", "entityType", "entityId", "snapshotType", data, checksum, "createdAt")
+      VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
+      RETURNING *`, record.id, record.userId, record.entityType, record.entityId, record.snapshotType, JSON.stringify(record.data), record.checksum, record.createdAt).then((rows) => rows[0]);
+  }
+}
+
+function isMissingStalePrismaFieldError(error: unknown, field: string) {
+  return error instanceof Error && error.message.includes(`Argument \`${field}\` is missing`);
 }
 
 export const snapshotStore = new InMemorySnapshotStore();

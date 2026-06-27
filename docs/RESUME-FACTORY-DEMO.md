@@ -11,22 +11,26 @@ npm run dev
 Open:
 
 ```text
+http://localhost:3000/profile-facts
 http://localhost:3000/resumes
 ```
 
 ## Demo steps
 
-1. Open `http://localhost:3000/resumes`.
-2. Confirm the page title says `Resume Factory`.
-3. Confirm the safety warning says the resume is a draft for local review only.
-4. Click `Generate Demo Splunk/Cribl Resume`.
-5. Confirm a command status appears.
-6. Confirm a resume version ID appears.
-7. Confirm a markdown resume preview appears.
-8. Confirm truthfulness status appears.
-9. Confirm keyword alignment appears.
-10. Confirm CISSP, Security+, and clearance are not invented.
-11. Confirm no email, upload, submit, or apply action happened.
+1. Open `http://localhost:3000/profile-facts`.
+2. Click `Seed Initial Profile Facts`.
+3. Confirm verified resume facts and blocked claims appear.
+4. Open `http://localhost:3000/resumes`.
+5. Confirm the page title says `Resume Factory`.
+6. Confirm the safety warning says the resume is a draft for local review only.
+7. Click `Generate Demo Splunk/Cribl Resume`.
+8. Confirm a command status appears.
+9. Confirm a resume version ID appears.
+10. Confirm a markdown resume preview appears.
+11. Confirm truthfulness status appears.
+12. Confirm keyword alignment appears.
+13. Confirm CISSP, Security+, and clearance are not invented.
+14. Confirm no email, upload, submit, or apply action happened.
 
 ## Expected keyword behavior
 

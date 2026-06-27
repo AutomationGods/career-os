@@ -1,3 +1,4 @@
+export const RESUME_DEMO_USER_ID = "demo-user";
 export const DEMO_TARGET_ROLE = "Splunk / Cribl Platform Engineer";
 export const DEMO_COMPANY_NAME = "Demo Commercial Company";
 export const DEMO_JOB_DESCRIPTION =
@@ -194,6 +195,7 @@ function normalizeGuard(value: unknown): TruthfulnessGuardView | undefined {
 
 export function buildResumeDemoPayload(fields: Partial<ResumeDemoFields> = {}): ResumeDemoPayload {
   return {
+    userId: RESUME_DEMO_USER_ID,
     jobId: "job-demo-splunk-cribl",
     companyId: "company-demo-commercial",
     applicationPacketId: "packet-demo-splunk-cribl",

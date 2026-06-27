@@ -74,6 +74,37 @@ model UserPreference {
   user               User    @relation(fields: [userId], references: [id])
 }
 
+model ProfileFact {
+  id                         String    @id @default(cuid())
+  userId                     String
+  factType                   String
+  category                   String?
+  label                      String
+  value                      String?
+  description                String?
+  source                     String?
+  sourceType                 String    @default("unknown")
+  confidence                 Float     @default(1)
+  verificationStatus         String    @default("needs_review")
+  allowedInResume            Boolean   @default(false)
+  allowedInCoverLetter       Boolean   @default(false)
+  allowedInRecruiterMessage  Boolean   @default(false)
+  requiresReview             Boolean   @default(true)
+  isBlocked                  Boolean   @default(false)
+  blockedReason              String?
+  expiresAt                  DateTime?
+  archivedAt                 DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@unique([userId, label, factType])
+  @@index([userId])
+  @@index([userId, verificationStatus])
+  @@index([userId, allowedInResume])
+  @@index([userId, isBlocked])
+  @@index([updatedAt])
+}
+
 model DomainRegistry {
   id           String               @id @default(cuid())
   name         String

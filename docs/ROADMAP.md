@@ -62,8 +62,9 @@ Career OS is the first flagship application on a reusable event-driven automatio
 
 - `POST /api/resumes` runs `resume.generate` through the existing command/orchestration boundary.
 - Resume Factory v1 emits deterministic, truthfulness-guarded markdown drafts from verified facts only.
+- `/profile-facts` adds a local source-of-truth workspace for verified facts and blocked claims.
 - `/resumes` adds a local Splunk / Cribl demo workspace with markdown preview, truthfulness status, keyword alignment, and safety warnings.
-- CISSP, Security+, clearance, fake employers, and fake metrics remain unclaimed unless verified and guard-approved.
+- CISSP, Security+, clearance, fake employers, and fake metrics remain unclaimed unless verified in Profile Facts and guard-approved.
 
 ## Next recommended foundation work
 

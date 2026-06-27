@@ -7,12 +7,15 @@ It generates review-required resume drafts from verified facts only.
 ## Command path
 
 ```text
+/profile-facts UI → Profile Facts API → Command Bus → Orchestrator → IdentityManager → ProfileFactsStore
 /resumes UI → POST /api/resumes → Command Bus → Orchestrator → ResumeFactoryManager → TechnicalResumeWorker → TruthfulnessGuardWorker → Event/State/Snapshot stores
 ```
 
 ## Local workspace
 
-Open `http://localhost:3000/resumes` after `npm run dev`.
+Open `http://localhost:3000/profile-facts` after `npm run dev`, then seed initial facts.
+
+Open `http://localhost:3000/resumes` after the facts exist.
 
 The page posts a safe Splunk / Cribl demo payload, displays the markdown draft, shows truthfulness status, and highlights verified, missing, and blocked keywords.
 

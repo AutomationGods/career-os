@@ -8,7 +8,7 @@ export const resumeGenerateRequestSchema = z.object({
   companyId: z.string().min(1),
   applicationPacketId: z.string().min(1),
   resumeVersionId: z.string().min(1).optional(),
-  verifiedFacts: z.array(z.string().min(1)).min(1),
+  verifiedFacts: z.array(z.string().min(1)).optional().default([]),
   targetRole: z.string().min(1).optional(),
   companyName: z.string().min(1).optional(),
   jobDescription: z.string().min(1).optional(),
@@ -25,7 +25,6 @@ export async function POST(request: Request) {
   const command = createCommand({
     type: "resume.generate",
     requestedBy: "api",
-    userId: body.userId,
     entityType: "application_packet",
     entityId: body.applicationPacketId,
     payload: body

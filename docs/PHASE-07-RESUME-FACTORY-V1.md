@@ -9,17 +9,22 @@ Resume Factory v1 creates truthfulness-guarded resume drafts from verified facts
 - `TechnicalResumeWorker` copies supplied verified facts into review-required resume markdown.
 - `TruthfulnessGuardWorker` blocks draft bullets that do not exactly match verified facts.
 - `resume.generated` events, `resume.current_draft` state projections, and `resume.source_input` snapshots preserve the generation trail.
-- `/resumes` provides a local browser demo for a Splunk / Cribl Platform Engineer target role.
+- `/profile-facts` provides a local source-of-truth workspace for verified resume facts and blocked claims.
+- `/resumes` provides a local browser demo for a Splunk / Cribl Platform Engineer target role and uses Profile Facts when seeded.
 
 ## Local demo
 
 1. `npm run dev`
-2. Open `http://localhost:3000/resumes`
-3. Click `Generate Demo Splunk/Cribl Resume`
-4. Confirm the resume preview appears.
-5. Confirm truthfulness status appears.
-6. Confirm CISSP, Security+, and clearance are not invented.
-7. Confirm no email, upload, submit, or apply action happened.
+2. Open `http://localhost:3000/profile-facts`
+3. Click `Seed Initial Profile Facts`
+4. Confirm verified Splunk, Cribl, DevOps, cloud, Linux, Terraform, SIEM, and observability facts appear.
+5. Confirm blocked CISSP, Security+, and clearance claims appear.
+6. Open `http://localhost:3000/resumes`
+7. Click `Generate Demo Splunk/Cribl Resume`
+8. Confirm the resume preview appears.
+9. Confirm truthfulness status appears.
+10. Confirm CISSP, Security+, and clearance are not invented.
+11. Confirm no email, upload, submit, or apply action happened.
 
 ## Demo payload
 
@@ -32,11 +37,11 @@ Company: Demo Commercial Company
 
 The job description includes Splunk, Cribl, SIEM, log onboarding, observability, Linux, Terraform, AWS, Azure, GCP, security data pipelines, CISSP, Security+, and no-clearance language.
 
-Verified facts cover Splunk, Cribl, SIEM, Linux, Terraform, AWS, Azure, GCP, log onboarding, observability, and security data pipelines.
+Seeded Profile Facts cover Splunk, Cribl, SIEM, Linux, Terraform, AWS, Azure, GCP, log onboarding, observability, and security data pipelines.
 
-CISSP and Security+ remain missing/preferred keywords unless supplied as verified facts later.
+CISSP and Security+ remain blocked claims unless verified and unblocked later.
 
-Clearance claims remain blocked unless supplied as verified facts later.
+Clearance claims remain blocked unless verified and unblocked later.
 
 ## Safety boundary
 

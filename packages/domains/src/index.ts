@@ -8,6 +8,8 @@ export * from "./opportunity-intelligence/opportunity-playbooks";
 export * from "./relationship-intelligence/discovery-playbooks";
 export * from "./relationship-intelligence/services";
 export * from "./mission/campaign-playbooks";
+export { IdentityManager } from "./identity/manager";
+export * from "./identity/profile-facts-service";
 export { ResumeFactoryManager } from "./resume-factory/manager";
 export type { ResumeGenerationRequest, ResumeGenerationResult, ResumeGenerationPlaceholder } from "./resume-factory/manager";
 export {

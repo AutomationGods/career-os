@@ -6,6 +6,7 @@ import {
   domainRegistry,
   JobIntelligenceManager,
   CommunicationsManager,
+  IdentityManager,
   ResumeFactoryManager,
   normalizeJob,
   scoreFit,
@@ -286,6 +287,7 @@ export function createOrchestrator(context: OrchestratorContext) {
   orchestrator.registerManager(new ApplicationPacketCommandManager());
   orchestrator.registerManager(new RelationshipCommandManager());
   orchestrator.registerManager(new DailyMissionCommandManager());
+  orchestrator.registerManager(new IdentityManager());
   orchestrator.registerManager(new ResumeFactoryManager());
   orchestrator.registerManager(new CommunicationsManager());
   return orchestrator;

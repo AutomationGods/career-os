@@ -69,11 +69,27 @@ export const protectedCommandPermissions: Record<string, PermissionName> = {
   "recruiter.contact_first_time": "contact_recruiter_first_time",
   "application.answer_sensitive_questions": "answer_sensitive_questions",
   "profile.modify_master": "modify_master_profile",
+  "profile_facts.create": "modify_master_profile",
+  "profile_facts.update": "modify_master_profile",
+  "profile_facts.archive": "modify_master_profile",
+  "profile_facts.verify": "modify_master_profile",
+  "profile_facts.block": "modify_master_profile",
+  "profile_facts.list": "modify_master_profile",
+  "profile_facts.seed_initial": "modify_master_profile",
   "followup.create": "create_followup",
   "followup.schedule": "schedule_followup",
   "followup.auto_send": "auto_send_followup"
 };
 
+const profileFactsV1Commands = new Set([
+  "profile_facts.create",
+  "profile_facts.update",
+  "profile_facts.archive",
+  "profile_facts.verify",
+  "profile_facts.block",
+  "profile_facts.list",
+  "profile_facts.seed_initial"
+]);
 const criticalPermissions = new Set<PermissionName>(["submit_application", "auto_send_followup", "send_email"]);
 const highRiskPermissions = new Set<PermissionName>(["use_browser", "upload_file", "contact_recruiter", "contact_recruiter_first_time", "answer_sensitive_questions", "modify_master_profile", "export_document_for_submission", "write_calendar"]);
 
@@ -140,6 +156,10 @@ export class PermissionPolicyService implements PermissionService {
 
     if (developmentAllowedPermissions.has(permission as PermissionName)) {
       return { status: "allowed", permission, reason: "Permission is allowed in current development policy.", riskLevel, requiresApproval: false };
+    }
+
+    if (profileFactsV1Commands.has(command.type)) {
+      return { status: "allowed", permission, reason: "Profile Facts v1 local editing is allowed; stricter master-profile approval is deferred.", riskLevel: "low", requiresApproval: false };
     }
 
     if (permission === "unregistered_command") {

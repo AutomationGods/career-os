@@ -15,21 +15,21 @@ describe("resume route schema", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("rejects requests without verified facts", () => {
+  it("accepts requests without verified facts so Profile Facts can supply them", () => {
     const parsed = resumeGenerateRequestSchema.safeParse({
+      userId: "demo-user",
       jobId: "job-1",
       companyId: "company-1",
-      applicationPacketId: "packet-1",
-      verifiedFacts: []
+      applicationPacketId: "packet-1"
     });
 
-    expect(parsed.success).toBe(false);
+    expect(parsed.success).toBe(true);
   });
 
   it("returns the expected failure envelope for invalid API payloads", async () => {
     const response = await POST(new Request("http://localhost/api/resumes", {
       method: "POST",
-      body: JSON.stringify({ jobId: "job-1", companyId: "company-1", applicationPacketId: "packet-1", verifiedFacts: [] })
+      body: JSON.stringify({ companyId: "company-1", applicationPacketId: "packet-1", verifiedFacts: [] })
     }));
     const body = await response.json();
 

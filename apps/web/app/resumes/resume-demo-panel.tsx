@@ -192,10 +192,11 @@ export default function ResumeDemoPanel() {
     setStatusMessage("Posting demo payload to /api/resumes through the existing Resume Factory command path...");
 
     try {
+      const { verifiedFacts: _demoFactsForFallbackPreview, ...apiPayload } = payload;
       const response = await fetch("/api/resumes", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(apiPayload)
       });
       const body = await readJson(response);
       const parsedResult = resumeResultFromEnvelope(body);

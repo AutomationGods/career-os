@@ -70,8 +70,9 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 
 - Resume Factory v1 generates truthfulness-guarded resume drafts from supplied verified facts only.
 - `POST /api/resumes` routes through the Command Bus, Orchestrator, Resume Factory Domain, Event Store, State Store, and Snapshot Store.
+- `/profile-facts` provides a local source-of-truth workspace for verified facts and blocked claims.
 - `/resumes` provides a local demo workspace with a Splunk / Cribl Platform Engineer payload, markdown preview, truthfulness status, keyword alignment, and safety warnings.
-- CISSP, Security+, clearance, fake employers, and fake metrics remain unclaimed unless they are supplied as verified facts and pass the guard.
+- CISSP, Security+, clearance, fake employers, and fake metrics remain unclaimed unless verified Profile Facts allow them and the guard passes.
 
 ## Resume Factory local demo
 
@@ -79,9 +80,9 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 npm run dev
 ```
 
-Then open `http://localhost:3000/resumes` and click `Generate Demo Splunk/Cribl Resume`.
+Then open `http://localhost:3000/profile-facts`, click `Seed Initial Profile Facts`, open `http://localhost:3000/resumes`, and click `Generate Demo Splunk/Cribl Resume`.
 
-Confirm the preview appears, truthfulness status appears, CISSP/Security+/clearance are not invented, and no email/upload/submit/apply action happened.
+Confirm the preview appears, truthfulness status appears, seeded Profile Facts are used, CISSP/Security+/clearance remain blocked, and no email/upload/submit/apply action happened.
 
 ## Safety rules
 
