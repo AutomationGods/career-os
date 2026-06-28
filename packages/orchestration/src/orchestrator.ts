@@ -4,17 +4,21 @@ import {
   generatePacketPlaceholders,
   getDomain,
   domainRegistry,
+  JobDiscoveryManager,
   JobIntelligenceManager,
   CommunicationsManager,
   IdentityManager,
   InMemoryDocumentExportStore,
+  InMemoryJobStore,
   InMemoryResumeVersionStore,
   ResumeFactoryManager,
   DocumentExportManager,
   normalizeJob,
+  prismaJobStore,
   scoreFit,
   segmentJob,
   type DocumentExportStore,
+  type JobStore,
   type ResumeVersionStore
 } from "@career-os/domains";
 import { eventStore, prismaEventStore, type CareerEventInput, type EventStore } from "@career-os/events";
@@ -36,6 +40,7 @@ export interface OrchestratorContext extends DomainExecutionContext {
   approvals?: ApprovalRequestService;
   resumeVersionStore?: ResumeVersionStore;
   documentExportStore?: DocumentExportStore;
+  jobStore?: JobStore;
 }
 
 class ApplicationPacketCommandManager implements DomainManagerContract {
@@ -55,7 +60,7 @@ class ApplicationPacketCommandManager implements DomainManagerContract {
     return command.type === "application_packets.create" || command.type === "application_packets.generate_placeholders";
   }
 
-  async handle(command: CareerCommand<Record<string, unknown>>, _context: DomainExecutionContext): Promise<CommandResult> {
+  async handle(command: CareerCommand<Record<string, unknown>>, context: DomainExecutionContext): Promise<CommandResult> {
     if (command.type === "application_packets.generate_placeholders") {
       const packetId = command.entityId ?? String(command.payload.id ?? "");
       if (!packetId) {
@@ -65,16 +70,30 @@ class ApplicationPacketCommandManager implements DomainManagerContract {
       return { ok: true, status: "completed", commandId: command.id, data: packet, emittedEvents: ["application_packet.updated"], updatedProjections: ["application_packet.current"] };
     }
 
-    const rawJob = (command.payload.selectedJob ?? command.payload.job ?? { title: "Untitled role", company: "Unknown company", source: "command" }) as Record<string, unknown>;
+    const executionContext = context as OrchestratorContext;
+    const jobId = command.payload.jobId ? String(command.payload.jobId) : command.entityId;
+    const persistedJob = jobId && !command.payload.selectedJob && !command.payload.job ? await executionContext.jobStore?.getById(jobId) : undefined;
+    const rawJob = (command.payload.selectedJob ?? command.payload.job ?? (persistedJob ? {
+      title: persistedJob.title,
+      company: persistedJob.company?.name ?? "Unknown company",
+      location: persistedJob.location,
+      description: persistedJob.description,
+      url: persistedJob.url,
+      employmentType: persistedJob.employmentType,
+      source: persistedJob.source ?? "persisted",
+      raw: { jobId: persistedJob.id }
+    } : { title: "Untitled role", company: "Unknown company", source: "command" })) as Record<string, unknown>;
     const selectedJob = normalizeJob(rawJob);
+    const persistedFitScore = persistedJob?.fitScores[0]?.score ?? persistedJob?.latestPipelineResult?.fitScore;
+    const persistedSegment = persistedJob?.segments[0]?.segment ?? persistedJob?.latestPipelineResult?.dashboardSegment;
     const packet = createApplicationPacket({
-      jobId: String(command.payload.jobId ?? command.entityId ?? `job_${Date.now()}`),
-      companyId: command.payload.companyId ? String(command.payload.companyId) : undefined,
+      jobId: String(jobId ?? persistedJob?.id ?? `job_${Date.now()}`),
+      companyId: command.payload.companyId ? String(command.payload.companyId) : persistedJob?.companyId,
       personId: command.payload.personId ? String(command.payload.personId) : undefined,
       selectedJob,
-      selectedCompany: (command.payload.selectedCompany as { id?: string; name: string } | undefined) ?? { id: command.payload.companyId ? String(command.payload.companyId) : undefined, name: selectedJob.company },
+      selectedCompany: (command.payload.selectedCompany as { id?: string; name: string } | undefined) ?? persistedJob?.company ?? { id: command.payload.companyId ? String(command.payload.companyId) : persistedJob?.companyId, name: selectedJob.company },
       selectedPerson: command.payload.selectedPerson as { id?: string; name: string; email?: string } | undefined,
-      fitScoreSummary: (command.payload.fitScoreSummary as { score: number; segment: ReturnType<typeof segmentJob>; highlights?: string[] } | undefined) ?? { score: scoreFit(selectedJob), segment: segmentJob(selectedJob), highlights: [] },
+      fitScoreSummary: (command.payload.fitScoreSummary as { score: number; segment: ReturnType<typeof segmentJob>; highlights?: string[] } | undefined) ?? { score: persistedFitScore ?? scoreFit(selectedJob), segment: persistedSegment ?? segmentJob(selectedJob), highlights: [] },
       notes: command.payload.notes as string[] | undefined
     });
     return { ok: true, status: "completed", commandId: command.id, data: packet, emittedEvents: ["application_packet.created"], updatedProjections: ["application_packet.current"] };
@@ -290,6 +309,7 @@ function getDomainByCommand(commandType: string) {
 
 export function createOrchestrator(context: OrchestratorContext) {
   const orchestrator = new Orchestrator(context);
+  orchestrator.registerManager(new JobDiscoveryManager());
   orchestrator.registerManager(new JobIntelligenceManager());
   orchestrator.registerManager(new ApplicationPacketCommandManager());
   orchestrator.registerManager(new RelationshipCommandManager());
@@ -325,7 +345,8 @@ export function createDefaultOrchestrator() {
     stateStore: prismaStateStore,
     snapshotStore: prismaSnapshotStore,
     permissions: new PermissionPolicyService(),
-    approvals: new PrismaApprovalRequestService(prismaEventStore)
+    approvals: new PrismaApprovalRequestService(prismaEventStore),
+    jobStore: prismaJobStore
   });
 }
 
@@ -337,7 +358,8 @@ export function createInMemoryOrchestrator() {
     permissions: new PermissionPolicyService(),
     approvals: new InMemoryApprovalRequestService(eventStore),
     resumeVersionStore: new InMemoryResumeVersionStore(),
-    documentExportStore: new InMemoryDocumentExportStore()
+    documentExportStore: new InMemoryDocumentExportStore(),
+    jobStore: new InMemoryJobStore()
   });
 }
 

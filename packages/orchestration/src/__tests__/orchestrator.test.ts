@@ -1,4 +1,4 @@
-import { InMemoryResumeVersionStore } from "@career-os/domains";
+import { InMemoryJobStore, InMemoryResumeVersionStore } from "@career-os/domains";
 import { InMemoryEventStore } from "@career-os/events";
 import { InMemorySnapshotStore } from "@career-os/snapshots";
 import { InMemoryStateStore } from "@career-os/state";
@@ -14,9 +14,10 @@ function createTestPlatform() {
   const snapshotStore = new InMemorySnapshotStore();
   const approvals = new InMemoryApprovalRequestService(eventStore);
   const resumeVersionStore = new InMemoryResumeVersionStore();
-  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals, resumeVersionStore });
+  const jobStore = new InMemoryJobStore();
+  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals, resumeVersionStore, jobStore });
   const bus = createCommandBus(orchestrator);
-  return { eventStore, stateStore, snapshotStore, approvals, orchestrator, bus };
+  return { eventStore, stateStore, snapshotStore, approvals, orchestrator, bus, jobStore };
 }
 
 describe("Orchestrator", () => {
@@ -172,5 +173,114 @@ describe("Orchestrator", () => {
     expect(snapshotStore.listByEntity("job", "job-command-1").length).toBe(1);
     expect(emittedTypes.includes("email.sent")).toBe(false);
     expect(emittedTypes.includes("application.submitted")).toBe(false);
+  });
+
+  it("imports a manual job and persists pipeline output through the command bus", async () => {
+    const { bus, jobStore, stateStore } = createTestPlatform();
+    const result = await bus.execute(createCommand({
+      type: "jobs.import_manual_url",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      payload: {
+        userId: "user-1",
+        title: "Splunk Platform Engineer",
+        companyName: "ExampleCo",
+        location: "Remote",
+        description: "Splunk Cribl Terraform AWS observability",
+        url: "https://example.test/job",
+        requiredFields: ["name", "email"],
+        hasEasyApply: true
+      }
+    }));
+    const data = result.data as { job?: { id: string }; externalActionTaken?: boolean };
+
+    expect(result.ok).toBe(true);
+    expect(data.externalActionTaken).toBe(false);
+    expect(data.job?.id.startsWith("job_")).toBe(true);
+    expect(jobStore.list({ userId: "user-1" }).length).toBe(1);
+    expect(Boolean(stateStore.getProjection("job", data.job?.id ?? "", "job.current"))).toBe(true);
+  });
+
+  it("reruns the job pipeline from only a persisted jobId", async () => {
+    const { bus } = createTestPlatform();
+    const importResult = await bus.execute(createCommand({
+      type: "jobs.import_manual_url",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      payload: { userId: "user-1", title: "Splunk Platform Engineer", companyName: "ExampleCo", location: "Remote", description: "Splunk Cribl Terraform AWS observability" }
+    }));
+    const imported = importResult.data as { job: { id: string } };
+    const rerunResult = await bus.execute(createCommand({
+      type: "jobs.run_pipeline",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      entityId: imported.job.id,
+      payload: { id: imported.job.id }
+    }));
+    const rerun = rerunResult.data as { normalizedJob?: { title: string; company: string }; persistedJob?: { id: string } };
+
+    expect(rerunResult.ok).toBe(true);
+    expect(rerun.normalizedJob?.title).toBe("Splunk Platform Engineer");
+    expect(rerun.normalizedJob?.company).toBe("ExampleCo");
+    expect(rerun.persistedJob?.id).toBe(imported.job.id);
+  });
+
+  it("creates an application packet from only a persisted jobId", async () => {
+    const { bus } = createTestPlatform();
+    const importResult = await bus.execute(createCommand({
+      type: "jobs.import_manual_url",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      payload: { userId: "user-1", title: "Splunk Platform Engineer", companyName: "ExampleCo", location: "Remote", description: "Splunk Cribl Terraform AWS observability" }
+    }));
+    const imported = importResult.data as { job: { id: string; companyId?: string } };
+    const packetResult = await bus.execute(createCommand({
+      type: "application_packets.create",
+      requestedBy: "api",
+      entityType: "job",
+      entityId: imported.job.id,
+      payload: { jobId: imported.job.id }
+    }));
+    const packet = packetResult.data as { jobId: string; selectedJob: { title: string }; selectedCompany?: { name: string }; fitScoreSummary: { score: number } };
+
+    expect(packetResult.ok).toBe(true);
+    expect(packet.jobId).toBe(imported.job.id);
+    expect(packet.selectedJob.title).toBe("Splunk Platform Engineer");
+    expect(packet.selectedCompany?.name).toBe("ExampleCo");
+    expect(packet.fitScoreSummary.score > 0).toBe(true);
+  });
+
+  it("generates a resume from persisted job context without explicit companyId", async () => {
+    const { bus } = createTestPlatform();
+    const importResult = await bus.execute(createCommand({
+      type: "jobs.import_manual_url",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      payload: { userId: "user-1", title: "Splunk Terraform Engineer", companyName: "ExampleCo", location: "Remote", description: "Splunk Cribl Terraform AWS observability" }
+    }));
+    const imported = importResult.data as { job: { id: string } };
+    const resumeResult = await bus.execute(createCommand({
+      type: "resume.generate",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "application_packet",
+      entityId: "packet-persisted-job",
+      payload: {
+        jobId: imported.job.id,
+        applicationPacketId: "packet-persisted-job",
+        verifiedFacts: ["Built Terraform modules for AWS observability workloads.", "Administered Splunk and Cribl pipelines for production telemetry."]
+      }
+    }));
+    const resume = resumeResult.data as { draft?: { companyId: string; jobId: string; content: string } };
+
+    expect(resumeResult.ok).toBe(true);
+    expect(resume.draft?.jobId).toBe(imported.job.id);
+    expect(resume.draft?.companyId.startsWith("company_")).toBe(true);
+    expect(Boolean(resume.draft?.content.includes("Splunk Terraform Engineer"))).toBe(true);
   });
 });

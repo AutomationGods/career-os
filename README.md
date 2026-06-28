@@ -99,13 +99,22 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - Required warning: `Local export only. Human review required before upload, email, submission, or external use.`
 - No email, upload, submission, browser automation, Gmail, Calendar, LinkedIn scraping, or AI provider call is performed.
 
+## Phase 10 Persisted Job Discovery v1
+
+- `/jobs` accepts pasted/manual job URL data only.
+- `POST /api/jobs/import` routes `jobs.import_manual_url` through Command Bus, Orchestrator, Job Discovery, Job Intelligence, Event Store, State Store, Snapshot Store, and Job Store.
+- Persisted jobs reuse existing Prisma `Company`, `Job`, `JobSource`, `JobSnapshot`, `JobSegment`, `JobFitScore`, and `JobApplicationDifficultyScore` models.
+- Application Packets can hydrate selected job/company/fit score from a persisted `jobId`.
+- Resume Factory can hydrate company/role/description from a persisted `jobId`; bullets still come from verified Profile Facts only.
+- No URL fetching, crawling, scraping, browser automation, upload, submission, email, Gmail, Calendar, LinkedIn scraping, AI provider call, or auto-apply is performed.
+
 ## Resume Factory local demo
 
 ```bash
 npm run dev
 ```
 
-Then open `http://localhost:3000/master-resume`, click `Import + Safety Blocks`, verify one Splunk/Cribl fact, open `http://localhost:3000/profile-facts`, confirm the source-of-truth state, open `http://localhost:3000/resumes`, and click `Generate Demo Splunk/Cribl Resume`.
+Then open `http://localhost:3000/jobs`, import the demo pasted Splunk/Cribl job, open `http://localhost:3000/master-resume`, click `Import + Safety Blocks`, verify one Splunk/Cribl fact, open `http://localhost:3000/profile-facts`, confirm the source-of-truth state, open `http://localhost:3000/resumes`, and click `Generate Demo Splunk/Cribl Resume`.
 
 Confirm the preview appears, truthfulness status appears, verified Profile Facts are used, needs-review facts are ignored, CISSP/Security+/clearance remain blocked, export Markdown and DOCX locally, and confirm no email/upload/submit/apply action happened.
 
@@ -130,6 +139,7 @@ LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser aut
 - `docs/PHASE-08-MASTER-RESUME-IMPORT-V1.md`
 - `docs/PHASE-09-RESUME-FACTORY-V2.md`
 - `docs/PHASE-09-DOCUMENT-EXPORT-V1.md`
+- `docs/PHASE-10-PERSISTED-JOB-DISCOVERY-V1.md`
 - `docs/DOCUMENT-EXPORT.md`
 - `docs/RESUME-FACTORY-DEMO.md`
 - `docs/ADR/0003-command-bus-orchestrator.md`

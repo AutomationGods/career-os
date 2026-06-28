@@ -2,6 +2,7 @@ import type { EventStore } from "@career-os/events";
 import type { SnapshotStore } from "@career-os/snapshots";
 import type { CareerCommand, CommandResult, DomainDefinition, DomainExecutionContext, DomainManagerContract } from "@career-os/shared";
 import type { StateStore } from "@career-os/state";
+import type { JobStore } from "../job-discovery/job-store";
 import { runJobPipeline, type JobPipelineInput } from "./pipeline";
 
 export const definition: DomainDefinition = {
@@ -23,6 +24,29 @@ export interface JobPipelineExecutionContext {
   eventStore: EventStore;
   stateStore: StateStore;
   snapshotStore: SnapshotStore;
+  jobStore?: JobStore;
+}
+
+function needsPersistedJobHydration(input: JobPipelineInput) {
+  return !input.title || !input.company || !input.description;
+}
+
+async function hydratePersistedPipelineInput(input: JobPipelineInput, jobStore?: JobStore): Promise<JobPipelineInput> {
+  if (!jobStore || !input.id || !needsPersistedJobHydration(input)) return input;
+  const job = await jobStore.getById(input.id);
+  if (!job) return input;
+  return {
+    ...input,
+    title: input.title ?? job.title,
+    company: input.company ?? job.company?.name ?? job.latestPipelineResult?.normalizedJob.company,
+    companyId: input.companyId ?? job.companyId,
+    location: input.location ?? job.location,
+    description: input.description ?? job.description,
+    url: input.url ?? job.url,
+    employmentType: input.employmentType ?? job.employmentType,
+    certifications: input.certifications ?? job.certifications.map((certification) => certification.certification),
+    source: input.source ?? job.source ?? "persisted"
+  };
 }
 
 export class JobIntelligenceManager implements DomainManagerContract {
@@ -54,9 +78,13 @@ export class JobIntelligenceManager implements DomainManagerContract {
     }
 
     const executionContext = context as unknown as JobPipelineExecutionContext;
-    const result = await runJobPipeline(
+    const pipelineInput = await hydratePersistedPipelineInput(
       { ...command.payload, id: command.entityId ?? command.payload.id, userId: command.userId ?? command.payload.userId },
-      { eventStore: executionContext.eventStore, stateStore: executionContext.stateStore, snapshotStore: executionContext.snapshotStore }
+      executionContext.jobStore
+    );
+    const result = await runJobPipeline(
+      pipelineInput,
+      { eventStore: executionContext.eventStore, stateStore: executionContext.stateStore, snapshotStore: executionContext.snapshotStore, jobStore: executionContext.jobStore }
     );
 
     return {
@@ -65,7 +93,7 @@ export class JobIntelligenceManager implements DomainManagerContract {
       commandId: command.id,
       data: result,
       emittedEvents: result.eventsEmitted,
-      updatedProjections: ["job.dashboard_segment"]
+      updatedProjections: ["job.dashboard_segment", "job.pipeline_result"]
     };
   }
 }

@@ -2,6 +2,7 @@ import { eventStore, type EventStore } from "@career-os/events";
 import { snapshotStore, type SnapshotStore } from "@career-os/snapshots";
 import { stateStore, type StateStore } from "@career-os/state";
 import type { JobSegment, NormalizedJob } from "@career-os/shared";
+import type { JobStore, PersistedJobRecord } from "../job-discovery/job-store";
 import { classifyRemote, normalizeJob, scoreFit, segmentClearance, segmentJob } from "./index";
 
 export interface JobPipelineInput extends Partial<NormalizedJob> {
@@ -18,6 +19,7 @@ export interface JobPipelineStores {
   eventStore?: EventStore;
   stateStore?: StateStore;
   snapshotStore?: SnapshotStore;
+  jobStore?: JobStore;
 }
 
 export interface JobPipelineResult {
@@ -30,6 +32,8 @@ export interface JobPipelineResult {
   applicationDifficultyScore: number;
   dashboardSegment: JobSegment;
   eventsEmitted: string[];
+  persistedJob?: PersistedJobRecord;
+  sourceSnapshotId?: string;
 }
 
 const blockedCertifications = ["cissp", "security+"];
@@ -63,13 +67,15 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
   const snapshots = stores.snapshotStore ?? snapshotStore;
 
   try {
-    await snapshots.captureSnapshot({
+    const sourceSnapshot = await snapshots.captureSnapshot({
       userId: input.userId,
       entityType: "job",
       entityId: jobId,
       snapshotType: "job.pipeline_input",
+      source: "job.pipeline_input",
       data: input
     });
+    const sourceSnapshotId = sourceSnapshot.id;
 
     const normalizedJob = normalizeJob(input as Partial<NormalizedJob> & Record<string, unknown>);
     const remoteClassification = classifyRemote(normalizedJob);
@@ -99,12 +105,48 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
         capability: "JobPipelineCapability",
         worker: "JobPipelineWorker",
         userId: input.userId,
-        payload,
-        evidence: { source: input.source ?? "pipeline", inputSnapshotCaptured: true },
+        payload: { jobId, sourceSnapshotId, ...payload },
+        evidence: { source: input.source ?? "pipeline", inputSnapshotCaptured: true, sourceSnapshotId },
         confidence: eventType === "job.pipeline_completed" ? 1 : undefined
       });
       if (eventType === "job.pipeline_completed") completedEventId = saved.id;
       eventsEmitted.push(eventType);
+    }
+
+    let persistedJob: PersistedJobRecord | undefined;
+    let persistedEventId: string | undefined;
+    if (stores.jobStore) {
+      persistedJob = await stores.jobStore.savePipelineResult({
+        jobId,
+        id: jobId,
+        userId: input.userId,
+        companyId: input.companyId,
+        companyName: input.company,
+        sourceSnapshotId,
+        input: input as Record<string, unknown>,
+        normalizedJob,
+        remoteClassification,
+        clearanceSegment,
+        certificationClassification,
+        fitScore,
+        applicationDifficultyScore,
+        dashboardSegment
+      });
+      const persisted = await events.append({
+        eventType: "job.persisted",
+        entityType: "job",
+        entityId: jobId,
+        domain: "job-intelligence",
+        manager: "Job Intelligence Manager",
+        capability: "JobPipelineCapability",
+        worker: "JobPipelineWorker",
+        userId: input.userId,
+        payload: { jobId, persistedJobId: persistedJob.id, sourceSnapshotId, dashboardSegment },
+        evidence: { source: input.source ?? "pipeline", sourceSnapshotId },
+        confidence: 1
+      });
+      persistedEventId = persisted.id;
+      eventsEmitted.push("job.persisted");
     }
 
     await states.upsertProjection({
@@ -112,12 +154,22 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
       projectionType: "job.dashboard_segment",
       entityType: "job",
       entityId: jobId,
-      data: { jobId, ...payload, updatedBy: "job.pipeline_completed" },
+      data: { jobId, persistedJobId: persistedJob?.id, sourceSnapshotId, ...payload, updatedBy: "job.pipeline_completed" },
       sourceEventId: completedEventId,
       updatedAt: new Date()
     });
 
-    return { jobId, normalizedJob, remoteClassification, clearanceSegment, certificationClassification, fitScore, applicationDifficultyScore, dashboardSegment, eventsEmitted };
+    await states.upsertProjection({
+      userId: input.userId,
+      projectionType: "job.pipeline_result",
+      entityType: "job",
+      entityId: jobId,
+      data: { jobId, persistedJobId: persistedJob?.id, sourceSnapshotId, ...payload, updatedBy: persistedJob ? "job.persisted" : "job.pipeline_completed" },
+      sourceEventId: persistedEventId ?? completedEventId,
+      updatedAt: new Date()
+    });
+
+    return { jobId, normalizedJob, remoteClassification, clearanceSegment, certificationClassification, fitScore, applicationDifficultyScore, dashboardSegment, eventsEmitted, persistedJob, sourceSnapshotId };
   } catch (error) {
     await events.append({
       eventType: "job.pipeline_failed",

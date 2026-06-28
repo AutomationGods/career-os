@@ -1,1 +1,1 @@
-export const events = ["job-discovery.completed"];
+export const events = ["job.imported", "job.source_snapshot_captured", "job.persisted"];

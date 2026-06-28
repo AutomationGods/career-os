@@ -2,6 +2,8 @@ export * from "./registry";
 export * from "./job-intelligence";
 export * from "./job-intelligence/pipeline";
 export { JobIntelligenceManager } from "./job-intelligence/manager";
+export { JobDiscoveryManager } from "./job-discovery/manager";
+export * from "./job-discovery/job-store";
 export * from "./application-packet/services";
 export * from "./research/search-intelligence-playbooks";
 export * from "./opportunity-intelligence/opportunity-playbooks";

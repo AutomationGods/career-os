@@ -91,9 +91,18 @@ Career OS is the first flagship application on a reusable event-driven automatio
 - `document_export.current_status` and `resume.current_exports` projections track export status.
 - Exported content remains grounded in verified draft bullets and excludes blocked claims.
 
+### Phase 10 — Persisted Job Discovery v1
+
+- `/jobs` imports pasted/manual job data only.
+- `jobs.import_manual_url`, `jobs.list`, and `jobs.get` route through Command Bus and Orchestrator.
+- `JobStore` persists canonical jobs plus sources, snapshots, segments, fit scores, and difficulty scores.
+- Existing `jobs.run_pipeline` can persist when a `JobStore` is injected.
+- Application Packets and Resume Factory can hydrate from a persisted `jobId`.
+- URL fetching, crawling, scraping, browser automation, upload, submission, email, Gmail, Calendar, LinkedIn scraping, AI provider calls, and auto-apply remain excluded.
+
 ## Next recommended foundation work
 
-Build persisted manual job discovery so exported resumes can later attach to durable jobs and application packets.
+Build persisted Application Packet records and attach generated documents to durable application workflows.
 
 ## Explicitly deferred
 

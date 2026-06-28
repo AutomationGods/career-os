@@ -2,6 +2,7 @@ import type { EventStore } from "@career-os/events";
 import type { SnapshotStore } from "@career-os/snapshots";
 import type { CareerCommand, CommandResult, DomainDefinition, DomainExecutionContext, DomainManagerContract } from "@career-os/shared";
 import type { StateStore } from "@career-os/state";
+import type { JobStore } from "../job-discovery/job-store";
 import { prismaProfileFactsStore, selectBlockedClaimLabels, selectResumeAllowedFacts, type ProfileFactRecord, type ProfileFactsStore } from "../identity/profile-facts-service";
 import { resumeGenerationCapability } from "./capabilities";
 import { prismaResumeVersionStore, type ResumeVersionRecord, type ResumeVersionStore } from "./resume-version-store";
@@ -52,7 +53,7 @@ export const definition: DomainDefinition = {
 export interface ResumeGenerationRequest {
   userId?: string;
   jobId: string;
-  companyId: string;
+  companyId?: string;
   applicationPacketId: string;
   resumeVersionId?: string;
   verifiedFacts: string[];
@@ -90,6 +91,7 @@ type ResumeFactoryContext = DomainExecutionContext & {
   snapshotStore: SnapshotStore;
   profileFactsStore?: ProfileFactsStore;
   resumeVersionStore?: ResumeVersionStore;
+  jobStore?: JobStore;
 };
 
 function isResumeGenerationPayload(payload: unknown): payload is ResumeGenerationPayload {
@@ -123,7 +125,7 @@ function buildRequest(command: CareerCommand): ResumeGenerationRequest | Command
   const request: ResumeGenerationRequest = {
     userId: optionalStringFrom(payload.userId),
     jobId: stringFrom(payload.jobId ?? command.entityId),
-    companyId: stringFrom(payload.companyId),
+    companyId: optionalStringFrom(payload.companyId),
     applicationPacketId: stringFrom(payload.applicationPacketId ?? command.entityId),
     resumeVersionId: optionalStringFrom(payload.resumeVersionId),
     verifiedFacts: normalizeVerifiedFacts(stringArrayFrom(payload.verifiedFacts)),
@@ -137,10 +139,26 @@ function buildRequest(command: CareerCommand): ResumeGenerationRequest | Command
   };
 
   if (!request.jobId) return validationError(command, "JOB_ID_REQUIRED", "jobId is required for resume generation.");
-  if (!request.companyId) return validationError(command, "COMPANY_ID_REQUIRED", "companyId is required for resume generation.");
   if (!request.applicationPacketId) return validationError(command, "APPLICATION_PACKET_ID_REQUIRED", "applicationPacketId is required for resume generation.");
 
   return request;
+}
+
+async function resolvePersistedJobRequest(request: ResumeGenerationRequest, context: ResumeFactoryContext) {
+  if (!context.jobStore || !request.jobId) return request;
+  const job = await context.jobStore.getById(request.jobId);
+  if (!job) return request;
+  return {
+    ...request,
+    companyId: request.companyId ?? job.companyId,
+    targetRole: request.targetRole ?? job.title,
+    companyName: request.companyName ?? job.company?.name ?? job.latestPipelineResult?.normalizedJob.company,
+    jobDescription: request.jobDescription ?? job.description ?? job.latestPipelineResult?.normalizedJob.description
+  };
+}
+
+function hasCompanyId(request: ResumeGenerationRequest): request is ResumeGenerationRequest & { companyId: string } {
+  return typeof request.companyId === "string" && request.companyId.trim().length > 0;
 }
 
 async function resolveResumeFacts(request: ResumeGenerationRequest, context: ResumeFactoryContext) {
@@ -243,7 +261,8 @@ export class ResumeFactoryManager implements DomainManagerContract {
     const requestOrError = buildRequest(command);
     if (isCommandResult(requestOrError)) return requestOrError as CommandResult<ResumeGenerationResult>;
 
-    const request = requestOrError;
+    const request = await resolvePersistedJobRequest(requestOrError, executionContext);
+    if (!hasCompanyId(request)) return validationError(command, "COMPANY_ID_REQUIRED", "companyId is required unless jobId resolves to a persisted job with companyId.") as CommandResult<ResumeGenerationResult>;
     const versionStore = executionContext.resumeVersionStore ?? prismaResumeVersionStore;
     const resolvedFacts = await resolveResumeFacts(request, executionContext);
     if (resolvedFacts.verifiedFacts.length === 0) return validationError(command, "VERIFIED_FACTS_REQUIRED", "At least one verified profile fact is required; Resume Factory will not invent content.") as CommandResult<ResumeGenerationResult>;

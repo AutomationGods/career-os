@@ -29,6 +29,16 @@ describe("resume route schema", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("accepts persisted-job resume requests without explicit companyId", () => {
+    const parsed = resumeGenerateRequestSchema.safeParse({
+      userId: "demo-user",
+      jobId: "job-1",
+      applicationPacketId: "packet-1"
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it("returns the expected failure envelope for invalid API payloads", async () => {
     const response = await POST(new Request("http://localhost/api/resumes", {
       method: "POST",

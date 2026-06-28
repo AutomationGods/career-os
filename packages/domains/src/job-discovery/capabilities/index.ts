@@ -1,1 +1,1 @@
-export const capabilities = ["Placeholder Capability"];
+export const capabilities = ["ManualJobImportCapability"];

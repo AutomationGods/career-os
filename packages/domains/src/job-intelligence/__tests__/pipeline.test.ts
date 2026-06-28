@@ -2,6 +2,7 @@ import { InMemoryEventStore } from "@career-os/events";
 import { InMemorySnapshotStore } from "@career-os/snapshots";
 import { InMemoryStateStore } from "@career-os/state";
 import { describe, expect, it } from "vitest";
+import { InMemoryJobStore } from "../../job-discovery/job-store";
 import { runJobPipeline } from "../pipeline";
 
 describe("job pipeline", () => {
@@ -41,5 +42,31 @@ describe("job pipeline", () => {
     expect(durableEvents.listByEntity("job", "durable-job").length).toBe(7);
     expect(Boolean(durableState.getProjection("job", "durable-job", "job.dashboard_segment"))).toBe(true);
     expect(durableSnapshots.listByEntity("job", "durable-job").length).toBe(1);
+  });
+
+  it("persists through an injected job store and emits job.persisted", async () => {
+    const durableEvents = new InMemoryEventStore();
+    const durableState = new InMemoryStateStore();
+    const durableSnapshots = new InMemorySnapshotStore();
+    const durableJobs = new InMemoryJobStore();
+
+    const result = await runJobPipeline(
+      {
+        id: "persisted-job",
+        title: "Splunk Platform Engineer",
+        company: "ExampleCo",
+        location: "Remote",
+        description: "Splunk Cribl Terraform AWS observability",
+        source: "test",
+        userId: "user-1"
+      },
+      { eventStore: durableEvents, stateStore: durableState, snapshotStore: durableSnapshots, jobStore: durableJobs }
+    );
+
+    expect(result.persistedJob?.id).toBe("persisted-job");
+    expect(result.eventsEmitted.includes("job.persisted")).toBe(true);
+    expect(durableEvents.listByEntity("job", "persisted-job").map((event) => event.eventType).includes("job.persisted")).toBe(true);
+    expect(Boolean(durableState.getProjection("job", "persisted-job", "job.pipeline_result"))).toBe(true);
+    expect(durableJobs.getById("persisted-job")?.segments[0]?.segment).toBe("Remote Commercial");
   });
 });

@@ -5,11 +5,24 @@ import { PermissionPolicyService } from "../permissions";
 describe("PermissionPolicyService", () => {
   const policy = new PermissionPolicyService();
 
-  it("allows development-safe permissions", () => {
-    const decision = policy.evaluate(createCommand({ type: "jobs.run_pipeline", requestedBy: "api", payload: {} }));
+  it("allows development-safe job write permissions", () => {
+    const runDecision = policy.evaluate(createCommand({ type: "jobs.run_pipeline", requestedBy: "api", payload: {} }));
+    const importDecision = policy.evaluate(createCommand({ type: "jobs.import_manual_url", requestedBy: "api", payload: {} }));
 
-    expect(decision.status).toBe("allowed");
-    expect(decision.permission).toBe("write_jobs");
+    expect(runDecision.status).toBe("allowed");
+    expect(runDecision.permission).toBe("write_jobs");
+    expect(importDecision.status).toBe("allowed");
+    expect(importDecision.permission).toBe("write_jobs");
+  });
+
+  it("allows development-safe job read permissions", () => {
+    const listDecision = policy.evaluate(createCommand({ type: "jobs.list", requestedBy: "api", payload: {} }));
+    const getDecision = policy.evaluate(createCommand({ type: "jobs.get", requestedBy: "api", payload: {} }));
+
+    expect(listDecision.status).toBe("allowed");
+    expect(listDecision.permission).toBe("read_jobs");
+    expect(getDecision.status).toBe("allowed");
+    expect(getDecision.permission).toBe("read_jobs");
   });
 
   it("allows local Master Resume import in the Profile Facts v1 safety carve-out", () => {

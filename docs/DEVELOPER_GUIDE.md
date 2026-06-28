@@ -155,6 +155,30 @@ Local export only. Human review required before upload, email, submission, or ex
 
 Submission-bound export remains a separate approval-gated capability.
 
+## Add manual persisted job discovery behavior
+
+Use the B1 path for job intake:
+
+```text
+/jobs → /api/jobs/import → jobs.import_manual_url → Job Discovery Manager → jobs.run_pipeline → JobStore
+```
+
+Rules:
+
+- Require pasted `title`, `companyName`/`company`, and `description`.
+- Store `url` as evidence only.
+- Use `JobStore` instead of writing job tables directly.
+- Keep `jobs.run_pipeline` compatible with no-store tests and API callers.
+- Map safe read/write job commands to `read_jobs` or `write_jobs`.
+- Preserve `externalActionTaken: false` for manual import flows.
+- Do not add fetching, crawling, scraping, browser automation, uploads, submissions, email, Gmail, Calendar, LinkedIn scraping, AI provider calls, or auto-apply in this path.
+
+Integration points:
+
+- `application_packets.create` may hydrate selected job/company/fit score from `jobStore.getById(jobId)`.
+- `resume.generate` may resolve company/role/description from a persisted job id.
+- Resume output still uses verified Profile Facts only.
+
 ## Add an approval-gated command
 
 1. Define the command in the owning domain.
