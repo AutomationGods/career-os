@@ -82,9 +82,18 @@ Career OS is the first flagship application on a reusable event-driven automatio
 - `resume.template_selected` and `resume.review_checklist_created` events preserve draft evidence.
 - Draft bullets still exactly match verified facts only; blocked claims appear as not claimed.
 
+### Phase 9 — Document Export v1
+
+- `/resumes` exports generated resume drafts as local Markdown and DOCX.
+- `/documents` lists local exports.
+- `document_exports.create_markdown` and `document_exports.create_docx` route through Command Bus, Orchestrator, and Document Export Domain.
+- `DocumentExport`, `DocumentVersion`, and `DocumentMetadata` store local content, checksums, and source IDs.
+- `document_export.current_status` and `resume.current_exports` projections track export status.
+- Exported content remains grounded in verified draft bullets and excludes blocked claims.
+
 ## Next recommended foundation work
 
-Build local Markdown/DOCX document export from persisted resume drafts.
+Build persisted manual job discovery so exported resumes can later attach to durable jobs and application packets.
 
 ## Explicitly deferred
 

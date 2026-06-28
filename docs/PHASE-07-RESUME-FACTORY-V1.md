@@ -24,7 +24,8 @@ Resume Factory v1 creates truthfulness-guarded resume drafts from verified facts
 8. Confirm the resume preview appears.
 9. Confirm truthfulness status appears.
 10. Confirm CISSP, Security+, and clearance are not invented.
-11. Confirm no email, upload, submit, or apply action happened.
+11. Export Markdown and DOCX locally from `/resumes` after the draft is generated.
+12. Confirm no email, upload, submit, or apply action happened.
 
 ## Demo payload
 
@@ -45,10 +46,13 @@ Clearance claims remain blocked unless verified and unblocked later.
 
 ## Safety boundary
 
-Resume Factory v1 does not send email, upload files, submit applications, apply to jobs, scrape LinkedIn, bypass CAPTCHA, call Gmail, call Calendar, export PDF, polish DOCX, or call an AI provider.
+Resume Factory v1 does not send email, upload files, submit applications, apply to jobs, scrape LinkedIn, bypass CAPTCHA, call Gmail, call Calendar, export PDF, upload documents externally, or call an AI provider.
+
+Document Export v1 later adds local-only Markdown and simple DOCX export through `document_exports.create_markdown` and `document_exports.create_docx`; those exports remain local review artifacts only.
 
 The `/resumes` workspace is a demo/UI layer only; resume generation still flows through:
 
 ```text
 UI → API → Command Bus → Orchestrator → Resume Factory Domain → Event/State/Snapshot stores
+UI → API → Command Bus → Orchestrator → Document Export Domain → Event/State/Snapshot stores
 ```

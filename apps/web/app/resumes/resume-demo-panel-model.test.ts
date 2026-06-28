@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLOCKED_DEMO_KEYWORDS, SAFETY_WARNINGS, buildKeywordAlignment, buildResumeDemoPayload, resumeResultFromEnvelope, uniqueStrings } from "./resume-demo-panel-model";
+import { BLOCKED_DEMO_KEYWORDS, DOCUMENT_EXPORT_WARNING_TEXT, SAFETY_WARNINGS, buildKeywordAlignment, buildResumeDemoPayload, documentExportResultFromEnvelope, resumeResultFromEnvelope, uniqueStrings } from "./resume-demo-panel-model";
 
 describe("resume demo panel model", () => {
   it("builds the default Splunk/Cribl demo payload without unsupported claims", () => {
@@ -31,7 +31,7 @@ describe("resume demo panel model", () => {
   });
 
   it("preserves safety warnings required by the demo page", () => {
-    expect(SAFETY_WARNINGS.join("|")).toBe("This resume is a draft for local review only.|Career OS did not email, upload, submit, or apply to anything.|Verify employer history, dates, and metrics before using externally.");
+    expect(SAFETY_WARNINGS.join("|")).toBe(`This resume is a draft for local review only.|Career OS did not email, upload, submit, or apply to anything.|Verify employer history, dates, and metrics before using externally.|${DOCUMENT_EXPORT_WARNING_TEXT}`);
     expect(BLOCKED_DEMO_KEYWORDS.includes("fake employer history")).toBe(true);
   });
 
@@ -97,5 +97,33 @@ describe("resume demo panel model", () => {
     expect(result.guard?.ok).toBe(false);
     expect(result.guard?.blockedClaims[0]).toBe("Held active Top Secret clearance.");
     expect(alignment.blockedKeywords.includes("Blocked claim: Held active Top Secret clearance.")).toBe(true);
+  });
+
+  it("extracts document export results for display", () => {
+    const result = documentExportResultFromEnvelope({
+      ok: true,
+      data: {
+        commandId: "command-export-1",
+        status: "completed",
+        result: {
+          downloadUrl: "/api/documents/exports/export-1/download",
+          warningText: DOCUMENT_EXPORT_WARNING_TEXT,
+          externalActionTaken: false,
+          export: {
+            id: "export-1",
+            documentType: "resume",
+            format: "markdown",
+            createdAt: "2026-06-27T00:00:00.000Z",
+            content: { filename: "resume.md", mimeType: "text/markdown", checksum: "abc", byteLength: 123, warningText: DOCUMENT_EXPORT_WARNING_TEXT }
+          }
+        }
+      }
+    });
+
+    expect(result.commandStatus).toBe("completed");
+    expect(result.export?.id).toBe("export-1");
+    expect(result.downloadUrl).toBe("/api/documents/exports/export-1/download");
+    expect(result.externalActionTaken).toBe(false);
+    expect(result.warningText).toBe(DOCUMENT_EXPORT_WARNING_TEXT);
   });
 });

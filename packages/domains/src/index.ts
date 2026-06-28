@@ -15,6 +15,8 @@ export { ResumeFactoryManager } from "./resume-factory/manager";
 export type { ResumeGenerationRequest, ResumeGenerationResult, ResumeGenerationPlaceholder } from "./resume-factory/manager";
 export * from "./resume-factory/resume-templates";
 export * from "./resume-factory/resume-version-store";
+export { DocumentExportManager } from "./document-export/manager";
+export * from "./document-export/document-export-store";
 export {
   buildTechnicalResumeDraft,
   extractResumeKeywords,

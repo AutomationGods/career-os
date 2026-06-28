@@ -135,6 +135,26 @@ Use `InMemorySnapshotStore` for tests and `PrismaSnapshotStore` for durable API/
 
 Snapshot types should describe the captured source, for example `job.description_snapshot` or `application.packet_snapshot`.
 
+## Add a local document export
+
+Document exports must use the same platform path as every other workflow:
+
+```text
+UI/API → Command Bus → Orchestrator → Document Export Domain → Worker/Tool → Event Store → State Store → Snapshot Store
+```
+
+Use `document_exports.create_markdown` or `document_exports.create_docx` for local review exports.
+
+Store local artifacts in `DocumentExport`, `DocumentVersion`, and `DocumentMetadata`; do not upload to external storage from this path.
+
+Every export must preserve the exact warning text:
+
+```text
+Local export only. Human review required before upload, email, submission, or external use.
+```
+
+Submission-bound export remains a separate approval-gated capability.
+
 ## Add an approval-gated command
 
 1. Define the command in the owning domain.

@@ -31,10 +31,13 @@ export const DEMO_VERIFIED_FACTS = [
 export const DEFAULT_RESUME_TEMPLATE_KEY = "ats-technical-v2";
 export const DEFAULT_SECTION_ORDER = ["summary", "technical_skills", "experience_highlights", "certifications", "additional_verified_facts"];
 
+export const DOCUMENT_EXPORT_WARNING_TEXT = "Local export only. Human review required before upload, email, submission, or external use.";
+
 export const SAFETY_WARNINGS = [
   "This resume is a draft for local review only.",
   "Career OS did not email, upload, submit, or apply to anything.",
-  "Verify employer history, dates, and metrics before using externally."
+  "Verify employer history, dates, and metrics before using externally.",
+  DOCUMENT_EXPORT_WARNING_TEXT
 ];
 
 export const BLOCKED_DEMO_KEYWORDS = ["clearance", "active clearance", "Secret", "Top Secret", "TS/SCI", "Public Trust", "Polygraph", "fake employer history", "fake metrics"];
@@ -126,6 +129,35 @@ export interface KeywordAlignmentView {
   partialMatches: string[];
   missingKeywords: string[];
   blockedKeywords: string[];
+}
+
+export interface DocumentExportContentView {
+  filename: string;
+  mimeType: string;
+  checksum?: string;
+  byteLength?: number;
+  warningText?: string;
+}
+
+export interface DocumentExportView {
+  id: string;
+  documentType: string;
+  format: "markdown" | "docx" | string;
+  url?: string;
+  createdAt?: string;
+  content?: DocumentExportContentView;
+  downloadUrl?: string;
+}
+
+export interface DocumentExportResultView {
+  commandId?: string;
+  commandStatus?: string;
+  export?: DocumentExportView;
+  downloadUrl?: string;
+  warningText?: string;
+  externalActionTaken: boolean;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 export function uniqueStrings(values: string[]) {
@@ -248,6 +280,28 @@ function normalizeGuard(value: unknown): TruthfulnessGuardView | undefined {
   };
 }
 
+function normalizeDocumentExportContent(value: unknown): DocumentExportContentView | undefined {
+  if (!isRecord(value)) return undefined;
+  const filename = asString(value.filename);
+  const mimeType = asString(value.mimeType);
+  if (!filename || !mimeType) return undefined;
+  return { filename, mimeType, checksum: asOptionalString(value.checksum), byteLength: typeof value.byteLength === "number" ? value.byteLength : undefined, warningText: asOptionalString(value.warningText) };
+}
+
+function normalizeDocumentExport(value: unknown): DocumentExportView | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = asString(value.id);
+  if (!id) return undefined;
+  return {
+    id,
+    documentType: asString(value.documentType, "resume"),
+    format: asString(value.format),
+    url: asOptionalString(value.url),
+    createdAt: asOptionalString(value.createdAt),
+    content: normalizeDocumentExportContent(value.content)
+  };
+}
+
 export function buildResumeDemoPayload(fields: Partial<ResumeDemoFields> = {}): ResumeDemoPayload {
   return {
     userId: RESUME_DEMO_USER_ID,
@@ -301,6 +355,44 @@ export function resumeResultFromEnvelope(envelope: unknown): ResumeResultView {
   }
 
   return { reviewRequired: true, warnings: [], blockedProfileClaims: [], errorCode: "INVALID_RESPONSE", errorMessage: "Resume API returned an unexpected response." };
+}
+
+export function documentExportResultFromEnvelope(envelope: unknown): DocumentExportResultView {
+  if (!isRecord(envelope)) return { externalActionTaken: false, errorCode: "INVALID_RESPONSE", errorMessage: "Document export API returned an unexpected response." };
+
+  if (envelope.ok === false) {
+    const error = isRecord(envelope.error) ? envelope.error : undefined;
+    const command = isRecord(envelope.command) ? envelope.command : undefined;
+    return {
+      commandId: asOptionalString(command?.id),
+      commandStatus: asOptionalString(command?.status),
+      externalActionTaken: false,
+      errorCode: asOptionalString(error?.code) ?? "REQUEST_FAILED",
+      errorMessage: asOptionalString(error?.message) ?? "Document export failed."
+    };
+  }
+
+  if (envelope.ok === true && isRecord(envelope.data)) {
+    const result = isRecord(envelope.data.result) ? envelope.data.result : envelope.data;
+    const exportRecord = normalizeDocumentExport(result.export);
+    return {
+      commandId: asOptionalString(envelope.data.commandId),
+      commandStatus: asOptionalString(envelope.data.status),
+      export: exportRecord ? { ...exportRecord, downloadUrl: asOptionalString(result.downloadUrl) } : undefined,
+      downloadUrl: asOptionalString(result.downloadUrl),
+      warningText: asOptionalString(result.warningText),
+      externalActionTaken: asBoolean(result.externalActionTaken, false)
+    };
+  }
+
+  return { externalActionTaken: false, errorCode: "INVALID_RESPONSE", errorMessage: "Document export API returned an unexpected response." };
+}
+
+export function documentExportsFromEnvelope(envelope: unknown): DocumentExportView[] {
+  if (!isRecord(envelope) || envelope.ok !== true || !isRecord(envelope.data)) return [];
+  const result = isRecord(envelope.data.result) ? envelope.data.result : envelope.data;
+  const exports = Array.isArray(result.exports) ? result.exports : [];
+  return exports.map(normalizeDocumentExport).filter((item): item is DocumentExportView => Boolean(item));
 }
 
 export function buildKeywordAlignment(payload: Pick<ResumeDemoPayload, "targetKeywords" | "verifiedFacts">, result?: ResumeResultView): KeywordAlignmentView {

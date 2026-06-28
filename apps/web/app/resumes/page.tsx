@@ -8,6 +8,7 @@ export default function ResumesPage() {
       <span className="badge">Local review only</span>
       <h1>Resume Factory</h1>
       <p className="muted">Truthfulness-guarded resume drafts for local review.</p>
+      <p><a href="/documents">Open Documents workspace</a></p>
       <ResumeDemoPanel />
     </main>
   );

@@ -7,11 +7,14 @@ import {
   JobIntelligenceManager,
   CommunicationsManager,
   IdentityManager,
+  InMemoryDocumentExportStore,
   InMemoryResumeVersionStore,
   ResumeFactoryManager,
+  DocumentExportManager,
   normalizeJob,
   scoreFit,
   segmentJob,
+  type DocumentExportStore,
   type ResumeVersionStore
 } from "@career-os/domains";
 import { eventStore, prismaEventStore, type CareerEventInput, type EventStore } from "@career-os/events";
@@ -32,6 +35,7 @@ export interface OrchestratorContext extends DomainExecutionContext {
   permissions?: PermissionService;
   approvals?: ApprovalRequestService;
   resumeVersionStore?: ResumeVersionStore;
+  documentExportStore?: DocumentExportStore;
 }
 
 class ApplicationPacketCommandManager implements DomainManagerContract {
@@ -292,6 +296,7 @@ export function createOrchestrator(context: OrchestratorContext) {
   orchestrator.registerManager(new DailyMissionCommandManager());
   orchestrator.registerManager(new IdentityManager());
   orchestrator.registerManager(new ResumeFactoryManager());
+  orchestrator.registerManager(new DocumentExportManager());
   orchestrator.registerManager(new CommunicationsManager());
   return orchestrator;
 }
@@ -331,7 +336,8 @@ export function createInMemoryOrchestrator() {
     snapshotStore,
     permissions: new PermissionPolicyService(),
     approvals: new InMemoryApprovalRequestService(eventStore),
-    resumeVersionStore: new InMemoryResumeVersionStore()
+    resumeVersionStore: new InMemoryResumeVersionStore(),
+    documentExportStore: new InMemoryDocumentExportStore()
   });
 }
 

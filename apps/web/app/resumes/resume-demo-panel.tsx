@@ -4,15 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_RESUME_TEMPLATE_KEY,
   DEFAULT_SECTION_ORDER,
+  DOCUMENT_EXPORT_WARNING_TEXT,
   DEMO_COMPANY_NAME,
   DEMO_JOB_DESCRIPTION,
   DEMO_TARGET_ROLE,
   SAFETY_WARNINGS,
   buildKeywordAlignment,
   buildResumeDemoPayload,
+  documentExportResultFromEnvelope,
   resumeResultFromEnvelope,
   resumeTemplatesFromEnvelope,
   uniqueStrings,
+  type DocumentExportResultView,
   type KeywordAlignmentView,
   type ResumeDemoFields,
   type ResumeDemoPayload,
@@ -137,6 +140,38 @@ function ReviewChecklist({ result }: { result?: ResumeResultView }) {
   );
 }
 
+function ExportWorkspace({ result, exports, statusMessage, isExporting, onExport }: { result?: ResumeResultView; exports: DocumentExportResultView[]; statusMessage: string; isExporting: boolean; onExport: (format: "markdown" | "docx") => void }) {
+  const canExport = Boolean(result?.draft && result.guard?.ok && result.resumeVersionId);
+  return (
+    <section className="section">
+      <h2>Local Document Export</h2>
+      <div className="card form-card">
+        <strong>Export warning</strong>
+        <p className="muted">{DOCUMENT_EXPORT_WARNING_TEXT}</p>
+        <p className="muted">Exports are generated inside Career OS only. No email, upload, submit, or apply action is performed.</p>
+        <div className="button-row">
+          <button type="button" disabled={!canExport || isExporting} onClick={() => onExport("markdown")}>{isExporting ? "Exporting..." : "Export Markdown"}</button>
+          <button type="button" disabled={!canExport || isExporting} onClick={() => onExport("docx")}>{isExporting ? "Exporting..." : "Export DOCX"}</button>
+        </div>
+        <p className="muted" aria-live="polite">{canExport ? statusMessage : "Generate a truthfulness-guarded resume before exporting."}</p>
+      </div>
+      <div className="grid">
+        {exports.length > 0 ? exports.map((item) => (
+          <div className="card" key={item.export?.id ?? item.commandId}>
+            <strong>{item.export?.content?.filename ?? item.export?.id ?? "Document export"}</strong>
+            <p className="muted">status: {item.errorMessage ? "failed" : item.commandStatus ?? "completed"}</p>
+            <p className="muted">document export ID: {item.export?.id ?? "n/a"}</p>
+            <p className="muted">local path: {item.export?.url ?? "stored in local DocumentExport records"}</p>
+            <p className="muted">external action taken: {String(item.externalActionTaken)}</p>
+            {item.downloadUrl ? <p><a href={item.downloadUrl}>Download {item.export?.format?.toUpperCase()}</a></p> : null}
+            {item.errorMessage ? <p role="alert">{item.errorCode}: {item.errorMessage}</p> : null}
+          </div>
+        )) : <div className="card"><p className="muted">No document exports generated yet.</p></div>}
+      </div>
+    </section>
+  );
+}
+
 function ResumePreview({ result, latestPayload }: { result?: ResumeResultView; latestPayload?: ResumeDemoPayload; alignment: KeywordAlignmentView }) {
   if (!result?.draft) return <div className="card"><p className="muted">Resume preview will appear here after generation.</p></div>;
 
@@ -177,8 +212,11 @@ export default function ResumeDemoPanel() {
   const [sectionOrderText, setSectionOrderText] = useState(DEFAULT_SECTION_ORDER.join(", "));
   const [latestPayload, setLatestPayload] = useState<ResumeDemoPayload | undefined>(undefined);
   const [result, setResult] = useState<ResumeResultView | undefined>(undefined);
+  const [exports, setExports] = useState<DocumentExportResultView[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Ready to generate a local review draft.");
+  const [exportStatusMessage, setExportStatusMessage] = useState("Ready to export local Markdown or DOCX after generation.");
 
   const alignment = useMemo(() => buildKeywordAlignment(latestPayload ?? buildResumeDemoPayload(fields), result), [fields, latestPayload, result]);
 
@@ -214,6 +252,7 @@ export default function ResumeDemoPanel() {
       const body = await readJson(response);
       const parsedResult = resumeResultFromEnvelope(body);
       setResult(parsedResult);
+      setExports([]);
 
       if (!response.ok || parsedResult.errorMessage) {
         setStatusMessage(parsedResult.errorMessage ?? "Resume generation failed.");
@@ -226,6 +265,39 @@ export default function ResumeDemoPanel() {
       setStatusMessage("Network/runtime error while calling /api/resumes.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function exportResume(format: "markdown" | "docx") {
+    if (!result?.draft) return;
+    setIsExporting(true);
+    setExportStatusMessage(`Exporting ${format.toUpperCase()} locally through the Document Export command path...`);
+
+    try {
+      const response = await fetch("/api/documents/export", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId: latestPayload?.userId,
+          resumeVersionId: result.resumeVersionId,
+          resumeDraft: result.resumeVersionId ? undefined : result.draft,
+          blockedProfileClaims: result.blockedProfileClaims,
+          format
+        })
+      });
+      const body = await readJson(response);
+      const parsedResult = documentExportResultFromEnvelope(body);
+      setExports((current) => [parsedResult, ...current]);
+      if (!response.ok || parsedResult.errorMessage) {
+        setExportStatusMessage(parsedResult.errorMessage ?? `${format.toUpperCase()} export failed.`);
+        return;
+      }
+      setExportStatusMessage(`${format.toUpperCase()} export generated locally. No email, upload, submit, or apply action happened.`);
+    } catch (error) {
+      setExports((current) => [{ externalActionTaken: false, errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." }, ...current]);
+      setExportStatusMessage(`Network/runtime error while exporting ${format.toUpperCase()}.`);
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -285,6 +357,8 @@ export default function ResumeDemoPanel() {
         <h2>Review Checklist</h2>
         <ReviewChecklist result={result} />
       </section>
+
+      <ExportWorkspace result={result} exports={exports} statusMessage={exportStatusMessage} isExporting={isExporting} onExport={(format) => void exportResume(format)} />
 
       <section className="section">
         <h2>Resume Preview</h2>

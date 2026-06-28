@@ -90,6 +90,15 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - Generated drafts persist to `ResumeVersion` with template metadata and checklist content.
 - Section bullets still copy verified facts exactly; needs-review and blocked claims are not claimed.
 
+## Phase 9 Document Export v1
+
+- `/resumes` can export generated resume drafts as local Markdown and DOCX.
+- `/documents` lists local document exports for review and download.
+- `POST /api/documents/export` routes through Command Bus, Orchestrator, and Document Export Domain.
+- Export records use `DocumentExport`, `DocumentVersion`, and `DocumentMetadata` with local-only content and checksums.
+- Required warning: `Local export only. Human review required before upload, email, submission, or external use.`
+- No email, upload, submission, browser automation, Gmail, Calendar, LinkedIn scraping, or AI provider call is performed.
+
 ## Resume Factory local demo
 
 ```bash
@@ -98,7 +107,7 @@ npm run dev
 
 Then open `http://localhost:3000/master-resume`, click `Import + Safety Blocks`, verify one Splunk/Cribl fact, open `http://localhost:3000/profile-facts`, confirm the source-of-truth state, open `http://localhost:3000/resumes`, and click `Generate Demo Splunk/Cribl Resume`.
 
-Confirm the preview appears, truthfulness status appears, verified Profile Facts are used, needs-review facts are ignored, CISSP/Security+/clearance remain blocked, and no email/upload/submit/apply action happened.
+Confirm the preview appears, truthfulness status appears, verified Profile Facts are used, needs-review facts are ignored, CISSP/Security+/clearance remain blocked, export Markdown and DOCX locally, and confirm no email/upload/submit/apply action happened.
 
 ## Safety rules
 
@@ -120,10 +129,13 @@ LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser aut
 - `docs/PHASE-07-RESUME-FACTORY-V1.md`
 - `docs/PHASE-08-MASTER-RESUME-IMPORT-V1.md`
 - `docs/PHASE-09-RESUME-FACTORY-V2.md`
+- `docs/PHASE-09-DOCUMENT-EXPORT-V1.md`
+- `docs/DOCUMENT-EXPORT.md`
 - `docs/RESUME-FACTORY-DEMO.md`
 - `docs/ADR/0003-command-bus-orchestrator.md`
 - `docs/ADR/0004-human-approval-gates.md`
 - `docs/ADR/0005-approved-command-replay-idempotency.md`
+- `docs/ADR/0007-local-document-export.md`
 
 ## Commands
 

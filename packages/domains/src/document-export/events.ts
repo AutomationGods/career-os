@@ -1,1 +1,1 @@
-export const events = ["document-export.completed"];
+export const events = ["document_export.requested", "document_export.markdown_generated", "document_export.docx_generated", "document_export.failed", "resume.export_markdown_generated", "resume.export_docx_generated"];

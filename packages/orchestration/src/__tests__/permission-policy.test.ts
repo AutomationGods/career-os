@@ -20,6 +20,14 @@ describe("PermissionPolicyService", () => {
     expect(decision.requiresApproval).toBe(false);
   });
 
+  it("allows local document export commands", () => {
+    const decision = policy.evaluate(createCommand({ type: "document_exports.create_markdown", requestedBy: "api", payload: {} }));
+
+    expect(decision.status).toBe("allowed");
+    expect(decision.permission).toBe("export_document");
+    expect(decision.requiresApproval).toBe(false);
+  });
+
   it("requires approval for sensitive permissions", () => {
     const decision = policy.evaluate(createCommand({ type: "email.send", requestedBy: "api", payload: {} }));
 

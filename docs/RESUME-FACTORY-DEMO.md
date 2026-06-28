@@ -35,7 +35,10 @@ http://localhost:3000/resumes
 15. Confirm truthfulness status appears.
 16. Confirm keyword alignment appears.
 17. Confirm CISSP, Security+, and clearance are not invented.
-18. Confirm no email, upload, submit, or apply action happened.
+18. Click `Export Markdown` and confirm a local document export ID appears.
+19. Click `Export DOCX` and confirm a local document export ID appears.
+20. Download both files and confirm blocked claims are absent.
+21. Confirm no email, upload, submit, or apply action happened.
 
 ## Expected keyword behavior
 
@@ -76,4 +79,6 @@ Blocked claims should appear as not claimed, not as resume bullets.
 
 The demo is intentionally API-backed and local-review-only.
 
-It does not implement Gmail sync, Google Calendar sync, email sending, Chrome extension behavior, browser autofill, auto-submit, LinkedIn scraping, proxy scraping, CAPTCHA bypassing, recruiter outreach, document upload, external document submission, DOCX export polish, PDF export, or AI provider calls.
+It does not implement Gmail sync, Google Calendar sync, email sending, Chrome extension behavior, browser autofill, auto-submit, LinkedIn scraping, proxy scraping, CAPTCHA bypassing, recruiter outreach, document upload, external document submission, PDF export, or AI provider calls.
+
+DOCX export is local-only and intentionally simple: paragraphs only, no graphics, no hidden custom metadata, and no tables.

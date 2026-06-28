@@ -95,6 +95,7 @@ export default function Page() {
             <a className="card" href="/master-resume"><strong>Master Resume Import</strong><p className="muted">Paste resume text into needs-review Profile Facts.</p></a>
             <a className="card" href="/profile-facts"><strong>Profile Facts</strong><p className="muted">Verify or block facts before document generation.</p></a>
             <a className="card" href="/resumes"><strong>Resume Factory</strong><p className="muted">Generate drafts from verified facts only.</p></a>
+            <a className="card" href="/documents"><strong>Documents</strong><p className="muted">Download local Markdown and DOCX exports.</p></a>
           </div>
         </section>
 
