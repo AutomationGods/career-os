@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  PROFILE_FACTS_DEMO_USER_ID,
   blockedReasonText,
   countProfileFacts,
   filterProfileFacts,
@@ -74,7 +73,7 @@ export default function ProfileFactsPanel() {
   }, []);
 
   async function refreshFacts() {
-    const response = await fetch(`/api/profile-facts?userId=${encodeURIComponent(PROFILE_FACTS_DEMO_USER_ID)}&filter=all`, { cache: "no-store" });
+    const response = await fetch("/api/profile-facts?filter=all", { cache: "no-store" });
     const body = await readJson(response);
     if (!response.ok) throw new Error(apiErrorMessage(body, "Could not load Profile Facts."));
     setFacts(profileFactsFromEnvelope(body));
@@ -88,7 +87,7 @@ export default function ProfileFactsPanel() {
       const response = await fetch("/api/profile-facts/seed-initial", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: PROFILE_FACTS_DEMO_USER_ID })
+        body: JSON.stringify({})
       });
       const body = await readJson(response);
       if (!response.ok) throw new Error(apiErrorMessage(body, "Could not seed Profile Facts."));
@@ -110,7 +109,6 @@ export default function ProfileFactsPanel() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          userId: PROFILE_FACTS_DEMO_USER_ID,
           factType: addFactType,
           category: addFactType,
           label: addLabel,
@@ -144,7 +142,7 @@ export default function ProfileFactsPanel() {
       const response = await fetch("/api/profile-facts/manual-block/block", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: PROFILE_FACTS_DEMO_USER_ID, label: blockLabel, blockedReason: blockReason })
+        body: JSON.stringify({ label: blockLabel, blockedReason: blockReason })
       });
       const body = await readJson(response);
       if (!response.ok) throw new Error(apiErrorMessage(body, "Could not block claim."));

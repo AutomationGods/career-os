@@ -42,6 +42,12 @@ describe("resume route schema", () => {
   it("returns the expected failure envelope for invalid API payloads", async () => {
     const response = await POST(new Request("http://localhost/api/resumes", {
       method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost",
+        "x-career-os-test-user-id": "demo-user",
+        "x-career-os-test-user-email": "demo-user@example.com"
+      },
       body: JSON.stringify({ companyId: "company-1", applicationPacketId: "packet-1", verifiedFacts: [] })
     }));
     const body = await response.json();

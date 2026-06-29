@@ -42,10 +42,11 @@ export interface SnapshotDiffSummary {
 export interface SnapshotStore {
   captureSnapshot<T>(snapshot: SnapshotInput<T>): SnapshotRecord<T> | Promise<SnapshotRecord<T>>;
   capture<T>(snapshot: SnapshotInput<T>): SnapshotRecord<T> | Promise<SnapshotRecord<T>>;
-  getSnapshot(id: string): SnapshotRecord | undefined | Promise<SnapshotRecord | undefined>;
-  listByEntity(entityType: string, entityId: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
-  listBySnapshotType(snapshotType: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
-  listRecent(limit: number): SnapshotRecord[] | Promise<SnapshotRecord[]>;
+  getSnapshot(id: string, currentUserId?: string): SnapshotRecord | undefined | Promise<SnapshotRecord | undefined>;
+  listByEntity(entityType: string, entityId: string, currentUserId?: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
+  listBySnapshotType(snapshotType: string, currentUserId?: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
+  listByUser(userId: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
+  listRecent(limit: number, currentUserId?: string): SnapshotRecord[] | Promise<SnapshotRecord[]>;
   compareSnapshots(snapshotA: SnapshotRecord | string, snapshotB: SnapshotRecord | string): SnapshotDiffSummary | Promise<SnapshotDiffSummary>;
 }
 
@@ -165,20 +166,26 @@ export class InMemorySnapshotStore implements SnapshotStore {
     return this.captureSnapshot(snapshot);
   }
 
-  getSnapshot(id: string) {
-    return this.snapshots.find((snapshot) => snapshot.id === id);
+  getSnapshot(id: string, currentUserId?: string) {
+    const snapshot = this.snapshots.find((item) => item.id === id);
+    if (!snapshot || (currentUserId && snapshot.userId !== currentUserId)) return undefined;
+    return snapshot;
   }
 
-  listByEntity(entityType: string, entityId: string) {
-    return this.snapshots.filter((snapshot) => snapshot.entityType === entityType && snapshot.entityId === entityId);
+  listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    return this.snapshots.filter((snapshot) => snapshot.entityType === entityType && snapshot.entityId === entityId && (!currentUserId || snapshot.userId === currentUserId));
   }
 
-  listBySnapshotType(snapshotType: string) {
-    return this.snapshots.filter((snapshot) => snapshot.snapshotType === snapshotType);
+  listBySnapshotType(snapshotType: string, currentUserId?: string) {
+    return this.snapshots.filter((snapshot) => snapshot.snapshotType === snapshotType && (!currentUserId || snapshot.userId === currentUserId));
   }
 
-  listRecent(limit: number) {
-    return [...this.snapshots].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+  listByUser(userId: string) {
+    return this.snapshots.filter((snapshot) => snapshot.userId === userId);
+  }
+
+  listRecent(limit: number, currentUserId?: string) {
+    return [...this.snapshots].filter((snapshot) => !currentUserId || snapshot.userId === currentUserId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
   }
 
   compareSnapshots(snapshotA: SnapshotRecord | string, snapshotB: SnapshotRecord | string) {
@@ -232,24 +239,33 @@ export class PrismaSnapshotStore implements SnapshotStore {
     return this.captureSnapshot(snapshot);
   }
 
-  async getSnapshot(id: string) {
-    if (this.client.snapshot) return toRecord(await this.client.snapshot.findUnique({ where: { id } }));
-    return toRecord(await this.rawFindFirst("WHERE id = $1", [id]));
+  async getSnapshot(id: string, currentUserId?: string) {
+    if (this.client.snapshot) {
+      const snapshot = toRecord(await this.client.snapshot.findUnique({ where: { id } }));
+      if (!snapshot || (currentUserId && snapshot.userId !== currentUserId)) return undefined;
+      return snapshot;
+    }
+    return toRecord(await this.rawFindFirst(`WHERE id = $1${currentUserId ? ' AND "userId" = $2' : ""}`, currentUserId ? [id, currentUserId] : [id]));
   }
 
-  async listByEntity(entityType: string, entityId: string) {
-    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { entityType, entityId }, orderBy: { createdAt: "desc" } }));
-    return toRecords(await this.rawFindMany('WHERE "entityType" = $1 AND "entityId" = $2 ORDER BY "createdAt" DESC', [entityType, entityId]));
+  async listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { entityType, entityId, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`WHERE "entityType" = $1 AND "entityId" = $2${currentUserId ? ' AND "userId" = $3' : ""} ORDER BY "createdAt" DESC`, currentUserId ? [entityType, entityId, currentUserId] : [entityType, entityId]));
   }
 
-  async listBySnapshotType(snapshotType: string) {
-    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { snapshotType }, orderBy: { createdAt: "desc" } }));
-    return toRecords(await this.rawFindMany('WHERE "snapshotType" = $1 ORDER BY "createdAt" DESC', [snapshotType]));
+  async listBySnapshotType(snapshotType: string, currentUserId?: string) {
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { snapshotType, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`WHERE "snapshotType" = $1${currentUserId ? ' AND "userId" = $2' : ""} ORDER BY "createdAt" DESC`, currentUserId ? [snapshotType, currentUserId] : [snapshotType]));
   }
 
-  async listRecent(limit: number) {
-    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ take: limit, orderBy: { createdAt: "desc" } }));
-    return toRecords(await this.rawFindMany('ORDER BY "createdAt" DESC LIMIT $1', [limit]));
+  async listByUser(userId: string) {
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany('WHERE "userId" = $1 ORDER BY "createdAt" DESC', [userId]));
+  }
+
+  async listRecent(limit: number, currentUserId?: string) {
+    if (this.client.snapshot) return toRecords(await this.client.snapshot.findMany({ where: currentUserId ? { userId: currentUserId } : undefined, take: limit, orderBy: { createdAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`${currentUserId ? 'WHERE "userId" = $2 ' : ""}ORDER BY "createdAt" DESC LIMIT $1`, currentUserId ? [limit, currentUserId] : [limit]));
   }
 
   async compareSnapshots(snapshotA: SnapshotRecord | string, snapshotB: SnapshotRecord | string) {

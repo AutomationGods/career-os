@@ -133,7 +133,7 @@ async function resolveDraft(request: DocumentExportRequest, context: DocumentExp
   if (directDraft) return directDraft;
   if (!request.resumeVersionId) return undefined;
   const resumeVersionStore = context.resumeVersionStore ?? prismaResumeVersionStore;
-  const version = await resumeVersionStore.getById(request.resumeVersionId);
+  const version = await resumeVersionStore.getById(request.resumeVersionId, request.userId);
   return normalizeDraft(version?.content);
 }
 
@@ -170,14 +170,18 @@ export class DocumentExportManager implements DomainManagerContract {
 
     if (command.type === DOCUMENT_EXPORT_GET_COMMAND) {
       const id = optionalStringFrom(payload.id ?? command.entityId);
+      const userId = optionalStringFrom(payload.userId ?? command.userId);
       if (!id) return validationError(command, "DOCUMENT_EXPORT_ID_REQUIRED", "Document export id is required.");
-      const record = await exportStore.getById(id);
+      if (!userId) return validationError(command, "USER_ID_REQUIRED", "document_exports.get requires an authenticated user id.");
+      const record = await exportStore.getById(id, userId);
       if (!record) return validationError(command, "DOCUMENT_EXPORT_NOT_FOUND", "Document export not found.");
       return { ok: true, status: "completed", commandId: command.id, data: { export: record } };
     }
 
     if (command.type === DOCUMENT_EXPORT_LIST_COMMAND) {
-      const exports = await exportStore.list({ userId: optionalStringFrom(payload.userId), format: payload.format === "markdown" || payload.format === "docx" ? payload.format : undefined, limit: Math.min(numberFrom(payload.limit, 50), 100) });
+      const userId = optionalStringFrom(payload.userId ?? command.userId);
+      if (!userId) return validationError(command, "USER_ID_REQUIRED", "document_exports.list requires an authenticated user id.");
+      const exports = await exportStore.list({ userId, format: payload.format === "markdown" || payload.format === "docx" ? payload.format : undefined, limit: Math.min(numberFrom(payload.limit, 50), 100) });
       return { ok: true, status: "completed", commandId: command.id, data: { exports } };
     }
 
@@ -187,6 +191,7 @@ export class DocumentExportManager implements DomainManagerContract {
       resumeDraft: normalizeDraft(payload.resumeDraft),
       blockedProfileClaims: stringArrayFrom(payload.blockedProfileClaims)
     };
+    if (!request.userId) return validationError(command, "USER_ID_REQUIRED", "Document export requires an authenticated user id.");
     const format = formatForCommand(command.type);
     const draft = await resolveDraft(request, executionContext);
     const resumeDraftId = draft?.id ?? request.resumeVersionId ?? command.entityId ?? command.id;

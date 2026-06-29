@@ -29,11 +29,11 @@ export interface StateProjectionRecord<T = unknown> {
 export interface StateStore {
   upsertProjection<T>(projection: StateProjectionInput<T>): StateProjectionRecord<T> | Promise<StateProjectionRecord<T>>;
   upsert<T>(projection: StateProjectionInput<T>): StateProjectionRecord<T> | Promise<StateProjectionRecord<T>>;
-  getProjection(entityType: string, entityId: string, projectionType: string): StateProjectionRecord | undefined | Promise<StateProjectionRecord | undefined>;
-  listByEntity(entityType: string, entityId: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
-  listByProjectionType(projectionType: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
+  getProjection(entityType: string, entityId: string, projectionType: string, currentUserId?: string): StateProjectionRecord | undefined | Promise<StateProjectionRecord | undefined>;
+  listByEntity(entityType: string, entityId: string, currentUserId?: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
+  listByProjectionType(projectionType: string, currentUserId?: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
   listByUser(userId: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
-  listRecent(limit: number): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
+  listRecent(limit: number, currentUserId?: string): StateProjectionRecord[] | Promise<StateProjectionRecord[]>;
   deleteProjection(id: string): StateProjectionRecord | undefined | Promise<StateProjectionRecord | undefined>;
 }
 
@@ -114,24 +114,26 @@ export class InMemoryStateStore implements StateStore {
     return this.upsertProjection(projection);
   }
 
-  getProjection(entityType: string, entityId: string, projectionType: string) {
-    return this.projections.get(`${projectionType}:${entityType}:${entityId}`);
+  getProjection(entityType: string, entityId: string, projectionType: string, currentUserId?: string) {
+    const projection = this.projections.get(`${projectionType}:${entityType}:${entityId}`);
+    if (!projection || (currentUserId && projection.userId !== currentUserId)) return undefined;
+    return projection;
   }
 
-  listByEntity(entityType: string, entityId: string) {
-    return [...this.projections.values()].filter((projection) => projection.entityType === entityType && projection.entityId === entityId);
+  listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    return [...this.projections.values()].filter((projection) => projection.entityType === entityType && projection.entityId === entityId && (!currentUserId || projection.userId === currentUserId));
   }
 
-  listByProjectionType(projectionType: string) {
-    return [...this.projections.values()].filter((projection) => projection.projectionType === projectionType);
+  listByProjectionType(projectionType: string, currentUserId?: string) {
+    return [...this.projections.values()].filter((projection) => projection.projectionType === projectionType && (!currentUserId || projection.userId === currentUserId));
   }
 
   listByUser(userId: string) {
     return [...this.projections.values()].filter((projection) => projection.userId === userId);
   }
 
-  listRecent(limit: number) {
-    return [...this.projections.values()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, limit);
+  listRecent(limit: number, currentUserId?: string) {
+    return [...this.projections.values()].filter((projection) => !currentUserId || projection.userId === currentUserId).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, limit);
   }
 
   deleteProjection(id: string) {
@@ -201,19 +203,19 @@ export class PrismaStateStore implements StateStore {
     return this.upsertProjection(projection);
   }
 
-  async getProjection(entityType: string, entityId: string, projectionType: string) {
-    if (this.client.stateProjection) return toRecord(await this.client.stateProjection.findFirst({ where: { entityType, entityId, projectionType } }));
-    return toRecord(await this.rawFindFirst('WHERE "entityType" = $1 AND "entityId" = $2 AND "projectionType" = $3', [entityType, entityId, projectionType]));
+  async getProjection(entityType: string, entityId: string, projectionType: string, currentUserId?: string) {
+    if (this.client.stateProjection) return toRecord(await this.client.stateProjection.findFirst({ where: { entityType, entityId, projectionType, ...(currentUserId ? { userId: currentUserId } : {}) } }));
+    return toRecord(await this.rawFindFirst(`WHERE "entityType" = $1 AND "entityId" = $2 AND "projectionType" = $3${currentUserId ? ' AND "userId" = $4' : ""}`, currentUserId ? [entityType, entityId, projectionType, currentUserId] : [entityType, entityId, projectionType]));
   }
 
-  async listByEntity(entityType: string, entityId: string) {
-    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ where: { entityType, entityId }, orderBy: { updatedAt: "desc" } }));
-    return toRecords(await this.rawFindMany('WHERE "entityType" = $1 AND "entityId" = $2 ORDER BY "updatedAt" DESC', [entityType, entityId]));
+  async listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ where: { entityType, entityId, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { updatedAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`WHERE "entityType" = $1 AND "entityId" = $2${currentUserId ? ' AND "userId" = $3' : ""} ORDER BY "updatedAt" DESC`, currentUserId ? [entityType, entityId, currentUserId] : [entityType, entityId]));
   }
 
-  async listByProjectionType(projectionType: string) {
-    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ where: { projectionType }, orderBy: { updatedAt: "desc" } }));
-    return toRecords(await this.rawFindMany('WHERE "projectionType" = $1 ORDER BY "updatedAt" DESC', [projectionType]));
+  async listByProjectionType(projectionType: string, currentUserId?: string) {
+    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ where: { projectionType, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { updatedAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`WHERE "projectionType" = $1${currentUserId ? ' AND "userId" = $2' : ""} ORDER BY "updatedAt" DESC`, currentUserId ? [projectionType, currentUserId] : [projectionType]));
   }
 
   async listByUser(userId: string) {
@@ -221,9 +223,9 @@ export class PrismaStateStore implements StateStore {
     return toRecords(await this.rawFindMany('WHERE "userId" = $1 ORDER BY "updatedAt" DESC', [userId]));
   }
 
-  async listRecent(limit: number) {
-    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ take: limit, orderBy: { updatedAt: "desc" } }));
-    return toRecords(await this.rawFindMany('ORDER BY "updatedAt" DESC LIMIT $1', [limit]));
+  async listRecent(limit: number, currentUserId?: string) {
+    if (this.client.stateProjection) return toRecords(await this.client.stateProjection.findMany({ where: currentUserId ? { userId: currentUserId } : undefined, take: limit, orderBy: { updatedAt: "desc" } }));
+    return toRecords(await this.rawFindMany(`${currentUserId ? 'WHERE "userId" = $2 ' : ""}ORDER BY "updatedAt" DESC LIMIT $1`, currentUserId ? [limit, currentUserId] : [limit]));
   }
 
   async deleteProjection(id: string) {

@@ -36,7 +36,8 @@ function createContext() {
 }
 
 function command(type: string, payload: Record<string, unknown>) {
-  return { id: `command-${type}`, type, requestedBy: "api" as const, entityType: "resume", entityId: draft.id, payload, createdAt: new Date().toISOString() };
+  const userId = typeof payload.userId === "string" ? payload.userId : "user-1";
+  return { id: `command-${type}`, type, requestedBy: "api" as const, userId, entityType: "resume", entityId: draft.id, payload: { ...payload, userId }, createdAt: new Date().toISOString() };
 }
 
 describe("DocumentExportManager", () => {
@@ -76,7 +77,7 @@ describe("DocumentExportManager", () => {
   it("blocks exports when draft bullets are not grounded in source facts", async () => {
     const context = createContext();
     const unsafeDraft = { ...draft, sections: [{ title: "Technical Skills", bullets: ["CISSP"] }], sourceFacts: ["Splunk Enterprise"] };
-    const result = await new DocumentExportManager().handle(command("document_exports.create_markdown", { resumeDraft: unsafeDraft, blockedProfileClaims: ["CISSP"] }), context);
+    const result = await new DocumentExportManager().handle(command("document_exports.create_markdown", { userId: "user-1", resumeDraft: unsafeDraft, blockedProfileClaims: ["CISSP"] }), context);
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("DOCUMENT_EXPORT_TRUTHFULNESS_FAILED");
@@ -89,7 +90,7 @@ describe("DocumentExportManager", () => {
     const manager = new DocumentExportManager();
     const created = await manager.handle(command("document_exports.create_markdown", { userId: "user-1", resumeDraft: draft }), context);
     const exportId = (created.data as { export: { id: string } }).export.id;
-    const got = await manager.handle(command("document_exports.get", { id: exportId }), context);
+    const got = await manager.handle(command("document_exports.get", { id: exportId, userId: "user-1" }), context);
     const listed = await manager.handle(command("document_exports.list", { userId: "user-1" }), context);
 
     expect(got.ok).toBe(true);

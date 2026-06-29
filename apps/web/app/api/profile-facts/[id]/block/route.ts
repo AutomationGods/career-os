@@ -1,5 +1,5 @@
 import { blockProfileFact } from "../../_handlers";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  return blockProfileFact(params.id, request);
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return blockProfileFact((await params).id, request);
 }

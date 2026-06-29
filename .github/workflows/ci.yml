@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: career_os
+          POSTGRES_PASSWORD: career_os
+          POSTGRES_DB: career_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U career_os -d career_os"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://career_os:career_os@localhost:5432/career_os?schema=public
+      REDIS_URL: redis://localhost:6379
+      NEXTAUTH_SECRET: ci-only-secret-with-at-least-32-characters
+      NEXTAUTH_URL: https://localhost:3000
+      ALLOWED_ORIGINS: https://localhost:3000
+      AUTH_ALLOWED_EMAILS: ci@example.com
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      ENABLE_DEV_COMMANDS: "false"
+      ENABLE_PLACEHOLDER_DOMAINS: "false"
+      ENABLE_EXTERNAL_COLLECTORS: "false"
+      ENABLE_PRODUCTION_DEMO_DATA: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Deploy migrations
+        run: npm run prisma:deploy
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm run audit:deps

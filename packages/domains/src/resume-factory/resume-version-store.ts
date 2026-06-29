@@ -4,6 +4,7 @@ import type { TechnicalResumeDraft } from "./workers/technical-resume-worker";
 
 export interface ResumeVersionRecord {
   id: string;
+  userId?: string;
   masterResumeId?: string;
   jobId?: string;
   companyId?: string;
@@ -18,6 +19,7 @@ export interface ResumeVersionRecord {
 
 export interface ResumeVersionSaveInput {
   draft: TechnicalResumeDraft;
+  userId?: string;
   masterResumeId?: string;
   templateKey: ResumeTemplateKey;
   sectionOrder: ResumeSectionKey[];
@@ -26,7 +28,7 @@ export interface ResumeVersionSaveInput {
 
 export interface ResumeVersionStore {
   save(input: ResumeVersionSaveInput): Promise<ResumeVersionRecord> | ResumeVersionRecord;
-  getById(id: string): Promise<ResumeVersionRecord | undefined> | ResumeVersionRecord | undefined;
+  getById(id: string, currentUserId?: string): Promise<ResumeVersionRecord | undefined> | ResumeVersionRecord | undefined;
 }
 
 type PrismaResumeVersionLike = {
@@ -41,6 +43,7 @@ function toRecord(row: unknown): ResumeVersionRecord | undefined {
   const record = row as ResumeVersionRecord;
   return {
     ...record,
+    userId: record.userId ?? undefined,
     masterResumeId: record.masterResumeId ?? undefined,
     jobId: record.jobId ?? undefined,
     companyId: record.companyId ?? undefined,
@@ -61,6 +64,7 @@ export class InMemoryResumeVersionStore implements ResumeVersionStore {
     const existing = this.versions.get(input.draft.id);
     const record: ResumeVersionRecord = {
       id: input.draft.id,
+      userId: input.userId,
       masterResumeId: input.masterResumeId,
       jobId: input.draft.jobId,
       companyId: input.draft.companyId,
@@ -76,8 +80,10 @@ export class InMemoryResumeVersionStore implements ResumeVersionStore {
     return record;
   }
 
-  getById(id: string) {
-    return this.versions.get(id);
+  getById(id: string, currentUserId?: string) {
+    const version = this.versions.get(id);
+    if (!version || (currentUserId && version.userId !== currentUserId)) return undefined;
+    return version;
   }
 
   clear() {
@@ -92,6 +98,7 @@ export class PrismaResumeVersionStore implements ResumeVersionStore {
     if (!this.client.resumeVersion) throw new Error("RESUME_VERSION_PRISMA_CLIENT_UNAVAILABLE: Prisma Client does not expose resumeVersion. Run `npx prisma generate` and restart `npm run dev`.");
     const data = {
       id: input.draft.id,
+      userId: input.userId,
       masterResumeId: input.masterResumeId,
       jobId: input.draft.jobId,
       companyId: input.draft.companyId,
@@ -107,9 +114,11 @@ export class PrismaResumeVersionStore implements ResumeVersionStore {
     return record;
   }
 
-  async getById(id: string) {
+  async getById(id: string, currentUserId?: string) {
     if (!this.client.resumeVersion) return undefined;
-    return toRecord(await this.client.resumeVersion.findUnique({ where: { id } }));
+    const version = toRecord(await this.client.resumeVersion.findUnique({ where: { id } }));
+    if (!version || (currentUserId && version.userId !== currentUserId)) return undefined;
+    return version;
   }
 }
 

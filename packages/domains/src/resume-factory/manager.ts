@@ -146,7 +146,7 @@ function buildRequest(command: CareerCommand): ResumeGenerationRequest | Command
 
 async function resolvePersistedJobRequest(request: ResumeGenerationRequest, context: ResumeFactoryContext) {
   if (!context.jobStore || !request.jobId) return request;
-  const job = await context.jobStore.getById(request.jobId);
+  const job = await context.jobStore.getById(request.jobId, request.userId);
   if (!job) return request;
   return {
     ...request,
@@ -285,6 +285,7 @@ export class ResumeFactoryManager implements DomainManagerContract {
 
     const resumeVersion = await versionStore.save({
       draft,
+      userId: resolvedRequest.userId,
       masterResumeId: resolvedRequest.masterResumeId,
       templateKey: draft.templateKey,
       sectionOrder: draft.sectionOrder,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RESUME_DEMO_USER_ID, documentExportsFromEnvelope, type DocumentExportView } from "../resumes/resume-demo-panel-model";
+import { documentExportsFromEnvelope, type DocumentExportView } from "../resumes/resume-demo-panel-model";
 
 async function readJson(response: Response) {
   try {
@@ -17,7 +17,7 @@ export default function DocumentsPanel() {
 
   async function refresh() {
     setStatusMessage("Loading document exports...");
-    const response = await fetch(`/api/documents/exports?userId=${encodeURIComponent(RESUME_DEMO_USER_ID)}`, { cache: "no-store" });
+    const response = await fetch("/api/documents/exports", { cache: "no-store" });
     const body = await readJson(response);
     if (!response.ok) {
       setStatusMessage("Could not load document exports.");
@@ -51,7 +51,7 @@ export default function DocumentsPanel() {
             <p><a href={item.downloadUrl}>Download</a></p>
           </div>
         ))}
-        {exports.length === 0 ? <div className="card"><p className="muted">No exports found for the demo user.</p></div> : null}
+        {exports.length === 0 ? <div className="card"><p className="muted">No exports found for your account yet.</p></div> : null}
       </div>
     </section>
   );

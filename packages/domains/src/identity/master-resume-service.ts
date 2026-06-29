@@ -207,9 +207,11 @@ export class InMemoryMasterResumeStore implements MasterResumeStore {
   private resumes = new Map<string, MasterResumeRecord>();
 
   importResume(input: MasterResumeImportInput) {
+    const userId = cleanString(input.userId);
+    if (!userId) throw new Error("userId is required to import a master resume.");
     const record = {
       id: createMasterResumeId(),
-      userId: cleanString(input.userId),
+      userId,
       content: buildContent(input)
     };
     this.resumes.set(record.id, record);
@@ -229,9 +231,11 @@ export class PrismaMasterResumeStore implements MasterResumeStore {
   constructor(private readonly client: PrismaMasterResumeLike = defaultPrisma as unknown as PrismaMasterResumeLike) {}
 
   async importResume(input: MasterResumeImportInput) {
+    const userId = cleanString(input.userId);
+    if (!userId) throw new Error("userId is required to import a master resume.");
     const record = {
       id: createMasterResumeId(),
-      userId: cleanString(input.userId),
+      userId,
       content: buildContent(input)
     };
     const row = this.client.masterResume

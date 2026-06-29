@@ -6,6 +6,7 @@ dist
 coverage
 .gg/screenshots/
 .gg/plans/
+.gg/tmp/
 *.tsbuildinfo
 apps/**/*.js
 packages/**/*.js

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { applicationPacketFromEnvelope } from "../application-packets/application-packets-model";
 import {
-  JOBS_DEMO_USER_ID,
   buildManualJobImportPayload,
   buildResumePayloadDefaultsFromJob,
   buildSafeDemoJobPayload,
@@ -28,7 +28,6 @@ async function readJson(response: Response) {
 function defaultFormFields(): ManualJobFormFields {
   const demo = buildSafeDemoJobPayload();
   return {
-    userId: demo.userId ?? JOBS_DEMO_USER_ID,
     url: demo.url ?? "",
     title: demo.title,
     companyName: demo.companyName,
@@ -45,7 +44,7 @@ function ErrorMessage({ message }: { message?: string }) {
   return message ? <p role="alert">{message}</p> : null;
 }
 
-function JobCard({ job }: { job: PersistedJobView }) {
+function JobCard({ job, packetHref, isCreatingPacket, onCreatePacket }: { job: PersistedJobView; packetHref?: string; isCreatingPacket?: boolean; onCreatePacket?: (job: PersistedJobView) => void }) {
   const resumeDefaults = buildResumePayloadDefaultsFromJob(job);
   const sourceUrl = job.url ?? job.sources.find((source) => source.url)?.url;
 
@@ -59,6 +58,10 @@ function JobCard({ job }: { job: PersistedJobView }) {
       <p className="muted">company ID: {job.companyId ?? "n/a"}</p>
       <p className="muted">snapshot ID: {snapshotIdForJob(job)}</p>
       {sourceUrl ? <p><a href={sourceUrl} target="_blank" rel="noreferrer">Open source URL</a></p> : <p className="muted">source URL: n/a</p>}
+      <div className="button-row">
+        <button type="button" disabled={isCreatingPacket} onClick={() => onCreatePacket?.(job)}>{isCreatingPacket ? "Creating packet..." : "Create application packet"}</button>
+        {packetHref ? <a className="button-link" href={packetHref}>Open created packet</a> : null}
+      </div>
       <div className="card">
         <strong>Packet / Resume helper</strong>
         <p className="muted">jobId: {resumeDefaults.jobId}</p>
@@ -70,7 +73,7 @@ function JobCard({ job }: { job: PersistedJobView }) {
   );
 }
 
-function SegmentedJobs({ jobs }: { jobs: PersistedJobView[] }) {
+function SegmentedJobs({ jobs, packetLinks, creatingPacketJobId, onCreatePacket }: { jobs: PersistedJobView[]; packetLinks: Record<string, string>; creatingPacketJobId?: string; onCreatePacket: (job: PersistedJobView) => void }) {
   const groups = useMemo(() => groupJobsByDashboardSegment(jobs), [jobs]);
   const segments = Object.keys(groups).sort();
 
@@ -82,7 +85,7 @@ function SegmentedJobs({ jobs }: { jobs: PersistedJobView[] }) {
         <section className="section" key={segment}>
           <h2>{segment}</h2>
           <div className="grid">
-            {groups[segment].map((job) => <JobCard key={job.id} job={job} />)}
+            {groups[segment].map((job) => <JobCard key={job.id} job={job} packetHref={packetLinks[job.id]} isCreatingPacket={creatingPacketJobId === job.id} onCreatePacket={onCreatePacket} />)}
           </div>
         </section>
       ))}
@@ -97,6 +100,8 @@ export default function JobsPanel() {
   const [statusMessage, setStatusMessage] = useState("Ready for pasted/manual job data only.");
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+  const [creatingPacketJobId, setCreatingPacketJobId] = useState<string | undefined>(undefined);
+  const [packetLinks, setPacketLinks] = useState<Record<string, string>>({});
 
   useEffect(() => {
     void refreshJobs();
@@ -108,7 +113,7 @@ export default function JobsPanel() {
 
   async function refreshJobs() {
     try {
-      const response = await fetch(`/api/jobs?userId=${encodeURIComponent(fields.userId || JOBS_DEMO_USER_ID)}`, { cache: "no-store" });
+      const response = await fetch("/api/jobs", { cache: "no-store" });
       const body = await readJson(response);
       setJobs(jobsFromListEnvelope(body));
     } catch {
@@ -132,12 +137,35 @@ export default function JobsPanel() {
       if (!response.ok || !importedJob) throw new Error("Manual job import failed.");
       setLatestJob(importedJob);
       await refreshJobs();
-      setStatusMessage("Job persisted locally. Pipeline segmentation/scoring completed; no scraping, upload, submit, or apply action happened.");
+      setStatusMessage("Job persisted locally. Pipeline segmentation/scoring completed; create an application packet next.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown job import failure.");
       setStatusMessage("Manual job import failed.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function createPacketFromJob(job: PersistedJobView) {
+    setCreatingPacketJobId(job.id);
+    setErrorMessage(undefined);
+    setStatusMessage(`Creating application packet for ${job.title}...`);
+    try {
+      const response = await fetch("/api/application-packets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jobId: job.id })
+      });
+      const body = await readJson(response);
+      const packet = applicationPacketFromEnvelope(body);
+      if (!response.ok || !packet) throw new Error("Application packet creation failed.");
+      setPacketLinks((current) => ({ ...current, [job.id]: `/application-packets/${encodeURIComponent(packet.id)}` }));
+      setStatusMessage("Application packet created. Open it to generate drafts, resume, export, and manual status updates.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown packet creation failure.");
+      setStatusMessage("Application packet creation failed.");
+    } finally {
+      setCreatingPacketJobId(undefined);
     }
   }
 
@@ -155,7 +183,6 @@ export default function JobsPanel() {
       <section className="section">
         <h2>Import Manual Job</h2>
         <div className="card form-card">
-          <label>User ID<input value={fields.userId} onChange={(event) => updateField("userId", event.target.value)} /></label>
           <label>Source URL<input value={fields.url} onChange={(event) => updateField("url", event.target.value)} /></label>
           <label>Title<input value={fields.title} onChange={(event) => updateField("title", event.target.value)} /></label>
           <label>Company<input value={fields.companyName} onChange={(event) => updateField("companyName", event.target.value)} /></label>
@@ -176,12 +203,12 @@ export default function JobsPanel() {
 
       <section className="section">
         <h2>Latest Import</h2>
-        {latestJob ? <div className="grid"><JobCard job={latestJob} /></div> : <div className="card"><p className="muted">No import in this browser session yet.</p></div>}
+        {latestJob ? <div className="grid"><JobCard job={latestJob} packetHref={packetLinks[latestJob.id]} isCreatingPacket={creatingPacketJobId === latestJob.id} onCreatePacket={createPacketFromJob} /></div> : <div className="card"><p className="muted">No import in this browser session yet.</p></div>}
       </section>
 
       <section className="section">
         <h2>Persisted Jobs</h2>
-        <SegmentedJobs jobs={jobs} />
+        <SegmentedJobs jobs={jobs} packetLinks={packetLinks} creatingPacketJobId={creatingPacketJobId} onCreatePacket={createPacketFromJob} />
       </section>
     </>
   );

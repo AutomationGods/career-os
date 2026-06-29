@@ -58,7 +58,7 @@ function SafetyWarning() {
 }
 
 function LatestResult({ result, latestPayload }: { result?: ResumeResultView; latestPayload?: ResumeDemoPayload }) {
-  if (!result) return <p className="muted">No resume generated yet. Run the demo generator to call POST /api/resumes.</p>;
+  if (!result) return <p className="muted">No resume generated yet. Generate a local draft to call POST /api/resumes.</p>;
 
   return (
     <div className="grid">
@@ -236,11 +236,11 @@ export default function ResumeDemoPanel() {
     setFields((current) => ({ ...current, sectionOrder: value.split(",").map((item) => item.trim()).filter(Boolean) }));
   }
 
-  async function generateDemoResume() {
+  async function generateLocalResume() {
     const payload = buildResumeDemoPayload(fields);
     setIsLoading(true);
     setLatestPayload(payload);
-    setStatusMessage("Posting demo payload to /api/resumes through the existing Resume Factory command path...");
+    setStatusMessage("Posting your local draft request to /api/resumes through the existing Resume Factory command path...");
 
     try {
       const { verifiedFacts: _demoFactsForFallbackPreview, ...apiPayload } = payload;
@@ -278,7 +278,6 @@ export default function ResumeDemoPanel() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          userId: latestPayload?.userId,
           resumeVersionId: result.resumeVersionId,
           resumeDraft: result.resumeVersionId ? undefined : result.draft,
           blockedProfileClaims: result.blockedProfileClaims,
@@ -306,7 +305,7 @@ export default function ResumeDemoPanel() {
       <SafetyWarning />
 
       <section className="section">
-        <h2>Demo Generator</h2>
+        <h2>Resume Factory</h2>
         <div className="card form-card">
           <label>
             Target role
@@ -330,8 +329,8 @@ export default function ResumeDemoPanel() {
             Section order
             <input value={sectionOrderText} onChange={(event) => updateSectionOrder(event.target.value)} />
           </label>
-          <button type="button" disabled={isLoading} onClick={() => void generateDemoResume()}>
-            {isLoading ? "Generating Demo Resume..." : "Generate Demo Splunk/Cribl Resume"}
+          <button type="button" disabled={isLoading} onClick={() => void generateLocalResume()}>
+            {isLoading ? "Generating resume..." : "Generate local review resume"}
           </button>
           <p className="muted" aria-live="polite">{statusMessage}</p>
           {result?.errorMessage ? <p role="alert">{result.errorCode}: {result.errorMessage}</p> : null}

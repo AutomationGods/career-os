@@ -146,7 +146,7 @@ export interface SavePipelineResultInput {
 
 export interface JobStore {
   savePipelineResult(input: SavePipelineResultInput): Promise<PersistedJobRecord> | PersistedJobRecord;
-  getById(id: string): Promise<PersistedJobRecord | undefined> | PersistedJobRecord | undefined;
+  getById(id: string, currentUserId?: string): Promise<PersistedJobRecord | undefined> | PersistedJobRecord | undefined;
   list(filter?: JobStoreListFilter): Promise<PersistedJobRecord[]> | PersistedJobRecord[];
 }
 
@@ -377,7 +377,7 @@ function toPersistedJobRecord(row: unknown): PersistedJobRecord | undefined {
 
   return {
     id: String(record.id),
-    userId: optionalString(snapshotContent.userId),
+    userId: optionalString(record.userId) ?? optionalString(snapshotContent.userId),
     companyId: optionalString(record.companyId),
     title: String(record.title),
     location: optionalString(record.location),
@@ -442,8 +442,10 @@ export class InMemoryJobStore implements JobStore {
     return saved;
   }
 
-  getById(id: string) {
-    return this.jobs.get(id);
+  getById(id: string, currentUserId?: string) {
+    const job = this.jobs.get(id);
+    if (!job || (currentUserId && job.userId !== currentUserId)) return undefined;
+    return job;
   }
 
   list(filter: JobStoreListFilter = {}) {
@@ -470,6 +472,7 @@ export class PrismaJobStore implements JobStore {
       where: { id: prepared.id },
       create: {
         id: prepared.id,
+        userId: prepared.userId,
         companyId: prepared.companyId,
         title: prepared.title,
         location: prepared.location,
@@ -479,6 +482,7 @@ export class PrismaJobStore implements JobStore {
         createdAt: prepared.createdAt
       },
       update: {
+        userId: prepared.userId,
         companyId: prepared.companyId,
         title: prepared.title,
         location: prepared.location,
@@ -514,21 +518,23 @@ export class PrismaJobStore implements JobStore {
       data: { jobId: prepared.id, content: prepared.latestSnapshot.content, capturedAt: prepared.latestSnapshot.capturedAt }
     });
 
-    const saved = await this.getById(prepared.id);
+    const saved = await this.getById(prepared.id, prepared.userId);
     if (!saved) throw new Error(`Persisted job not found after save: ${prepared.id}`);
     return saved;
   }
 
-  async getById(id: string) {
+  async getById(id: string, currentUserId?: string) {
     const findUnique = this.required(this.client.job.findUnique, "job.findUnique");
     const row = await findUnique.call(this.client.job, { where: { id }, include: relationInclude() });
-    return toPersistedJobRecord(row);
+    const job = toPersistedJobRecord(row);
+    if (!job || (currentUserId && job.userId !== currentUserId)) return undefined;
+    return job;
   }
 
   async list(filter: JobStoreListFilter = {}) {
     const findMany = this.required<unknown[]>(this.client.job.findMany, "job.findMany");
     const rows = await findMany.call(this.client.job, {
-      where: filter.status ? { status: filter.status } : undefined,
+      where: { ...(filter.status ? { status: filter.status } : {}), ...(filter.userId ? { userId: filter.userId } : {}) },
       include: relationInclude(),
       orderBy: { createdAt: "desc" },
       take: typeof filter.limit === "number" ? Math.max(filter.limit * 5, filter.limit, 25) : undefined

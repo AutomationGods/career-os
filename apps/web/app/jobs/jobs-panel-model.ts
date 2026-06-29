@@ -52,7 +52,6 @@ export interface PersistedJobView {
 }
 
 export interface ManualJobFormFields {
-  userId: string;
   url: string;
   title: string;
   companyName: string;
@@ -79,7 +78,6 @@ export interface ManualJobImportPayload {
 }
 
 export interface ResumePayloadDefaults {
-  userId?: string;
   jobId: string;
   companyId?: string;
   applicationPacketId: string;
@@ -225,8 +223,7 @@ export function buildSafeDemoJobPayload(overrides: Partial<ManualJobImportPayloa
 }
 
 export function buildManualJobImportPayload(fields: ManualJobFormFields): ManualJobImportPayload {
-  return buildSafeDemoJobPayload({
-    userId: fields.userId || undefined,
+  const payload = buildSafeDemoJobPayload({
     url: fields.url || undefined,
     title: fields.title,
     companyName: fields.companyName,
@@ -237,11 +234,12 @@ export function buildManualJobImportPayload(fields: ManualJobFormFields): Manual
     requiredFields: asStringArrayFromText(fields.requiredFieldsText),
     hasEasyApply: fields.hasEasyApply
   });
+  delete payload.userId;
+  return payload;
 }
 
 export function buildResumePayloadDefaultsFromJob(job: PersistedJobView): ResumePayloadDefaults {
   return {
-    userId: job.userId ?? JOBS_DEMO_USER_ID,
     jobId: job.id,
     companyId: job.companyId,
     applicationPacketId: `packet_${job.id}`,

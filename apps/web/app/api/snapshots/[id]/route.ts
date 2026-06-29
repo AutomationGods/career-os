@@ -1,11 +1,18 @@
 import { prismaSnapshotStore } from "@career-os/snapshots";
 import { errorMessage, fail, ok } from "../../_lib/responses";
+import { requireUser, sessionErrorResponse } from "../../_lib/session";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const snapshot = await prismaSnapshotStore.getSnapshot(params.id);
-    return snapshot ? ok(snapshot) : fail("Snapshot not found", "SNAPSHOT_NOT_FOUND", 404);
+    const user = await requireUser(request);
+    const snapshot = await prismaSnapshotStore.getSnapshot((await params).id, user.role === "admin" ? undefined : user.id);
+    if (!snapshot) return fail("Snapshot not found", "SNAPSHOT_NOT_FOUND", 404);
+    return ok(snapshot);
   } catch (error) {
-    return fail(errorMessage(error), "SNAPSHOT_LOOKUP_FAILED", 500);
+    try {
+      return sessionErrorResponse(error);
+    } catch {
+      return fail(errorMessage(error), "SNAPSHOT_LOOKUP_FAILED", 500);
+    }
   }
 }

@@ -155,7 +155,10 @@ export class JobDiscoveryManager implements DomainManagerContract {
     if (command.type === JOB_GET_COMMAND) {
       const id = getJobId(command as CareerCommand<JobGetPayload>);
       if (!id) return validationError(command, "JOB_ID_REQUIRED", "jobs.get requires a job id.");
-      const job = await jobStore.getById(id);
+      const payload = command.payload as (Partial<JobGetPayload> & { userId?: unknown }) | undefined;
+      const userId = optionalStringFrom(command.userId ?? payload?.userId);
+      if (!userId) return validationError(command, "USER_ID_REQUIRED", "jobs.get requires an authenticated user id.");
+      const job = await jobStore.getById(id, userId);
       if (!job) return validationError(command, "JOB_NOT_FOUND", `Job not found: ${id}`);
       return { ok: true, status: "completed", commandId: command.id, data: { job }, updatedProjections: [] };
     }
@@ -217,7 +220,7 @@ export class JobDiscoveryManager implements DomainManagerContract {
         jobStore
       }
     );
-    const job = pipelineResult.persistedJob ?? await jobStore.getById(jobId);
+    const job = pipelineResult.persistedJob ?? await jobStore.getById(jobId, importInput.userId);
 
     await executionContext.stateStore.upsertProjection({
       userId: importInput.userId,

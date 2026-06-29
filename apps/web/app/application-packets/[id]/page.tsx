@@ -1,1 +1,15 @@
-export default function PacketDetailPage({ params }: { params: { id: string } }){ return <main className="main"><h1>Packet Detail</h1><div className="card"><strong>{params.id}</strong><p className="muted">Shows selected job, company, recruiter, fit summary, resume placeholder, cover letter placeholder, recruiter message placeholder, notes, status, and next action.</p></div></main>; }
+import { requirePageUser } from "../../_lib/page-auth";
+import PacketDetailPanel from "./packet-detail-panel";
+
+export default async function PacketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageUser();
+
+  return (
+    <main className="main">
+      <span className="badge">Manual packet workspace</span>
+      <h1>Packet Detail</h1>
+      <p className="muted">Review drafts, generate a verified-facts resume, export locally, and track manual-only application status.</p>
+      <PacketDetailPanel packetId={(await params).id} />
+    </main>
+  );
+}

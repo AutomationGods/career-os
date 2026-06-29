@@ -2,6 +2,14 @@ import type { CareerCommand, CommandResult } from "@career-os/shared";
 import { describe, expect, it } from "vitest";
 import { createDocumentExport, documentExportCreateSchema, documentExportListSchema, getDocumentExport, listDocumentExports } from "../_handlers";
 
+function authRequest(path: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("x-career-os-test-user-id", "demo-user");
+  headers.set("x-career-os-test-user-email", "demo-user@example.com");
+  if (init.method && init.method !== "GET") headers.set("origin", "http://localhost");
+  return new Request(`http://localhost${path}`, { ...init, headers });
+}
+
 describe("document export route schemas", () => {
   it("accepts markdown export payloads with a resume version", () => {
     const parsed = documentExportCreateSchema.safeParse({ userId: "demo-user", resumeVersionId: "resume-1", format: "markdown" });
@@ -29,17 +37,18 @@ describe("document export handlers", () => {
     const bus = {
       async execute(command: CareerCommand): Promise<CommandResult> {
         capturedCommand = command;
-        return { ok: true, status: "completed", commandId: command.id, data: { export: { id: "export-1" }, downloadUrl: "/api/documents/exports/export-1/download" } };
+        return { ok: true, status: "completed", commandId: command.id, data: { export: { id: "export-1", userId: command.userId }, downloadUrl: "/api/documents/exports/export-1/download" } };
       }
     };
 
-    const response = await createDocumentExport(new Request("http://localhost/api/documents/export", { method: "POST", body: JSON.stringify({ userId: "demo-user", resumeVersionId: "resume-1", format: "markdown" }) }), bus);
+    const response = await createDocumentExport(authRequest("/api/documents/export", { method: "POST", body: JSON.stringify({ userId: "attacker", resumeVersionId: "resume-1", format: "markdown" }) }), bus);
     const body = await response.json();
 
     expect(response.status).toBe(201);
     expect(body.ok).toBe(true);
     expect(capturedCommand?.type).toBe("document_exports.create_markdown");
     expect(capturedCommand?.entityId).toBe("resume-1");
+    expect(capturedCommand?.userId).toBe("demo-user");
   });
 
   it("routes docx export through the command bus", async () => {
@@ -51,7 +60,7 @@ describe("document export handlers", () => {
       }
     };
 
-    const response = await createDocumentExport(new Request("http://localhost/api/documents/export", { method: "POST", body: JSON.stringify({ resumeVersionId: "resume-2", format: "docx" }) }), bus);
+    const response = await createDocumentExport(authRequest("/api/documents/export", { method: "POST", body: JSON.stringify({ resumeVersionId: "resume-2", format: "docx" }) }), bus);
 
     expect(response.status).toBe(201);
     expect(capturedCommand?.type).toBe("document_exports.create_docx");
@@ -66,8 +75,8 @@ describe("document export handlers", () => {
       }
     };
 
-    await listDocumentExports(new Request("http://localhost/api/documents/exports?userId=demo-user"), bus);
-    await getDocumentExport("export-1", bus);
+    await listDocumentExports(authRequest("/api/documents/exports?userId=attacker"), bus);
+    await getDocumentExport("export-1", authRequest("/api/documents/exports/export-1"), bus);
 
     expect(commands.join("|")).toBe("document_exports.list|document_exports.get");
   });

@@ -495,8 +495,10 @@ export class IdentityManager implements DomainManagerContract {
 
     if (command.type === "profile_facts.verify") {
       const id = stringFrom(payload.id ?? command.entityId);
+      const userId = stringFrom(payload.userId ?? command.userId);
       if (!id) return validationError(command, "PROFILE_FACT_ID_REQUIRED", "id is required to verify a profile fact.");
-      const fact = await store.verify(id);
+      if (!userId) return validationError(command, "USER_ID_REQUIRED", "userId is required to verify a profile fact.");
+      const fact = await store.verify(id, userId);
       if (!fact) return validationError(command, "PROFILE_FACT_NOT_FOUND", "Profile fact not found.");
       const event = await executionContext.eventStore.append({ eventType: "profile_fact.verified", entityType: "profile_fact", entityId: fact.id, domain: definition.slug, manager: definition.manager, capability: "ProfileFactsCapability", worker: "ProfileFactsWorker", payload: factEventPayload(fact), confidence: fact.confidence });
       await updateProfileFactProjections(executionContext, fact.userId, event.id);
@@ -517,8 +519,10 @@ export class IdentityManager implements DomainManagerContract {
 
     if (command.type === "profile_facts.archive") {
       const id = stringFrom(payload.id ?? command.entityId);
+      const userId = stringFrom(payload.userId ?? command.userId);
       if (!id) return validationError(command, "PROFILE_FACT_ID_REQUIRED", "id is required to archive a profile fact.");
-      const fact = await store.archive(id);
+      if (!userId) return validationError(command, "USER_ID_REQUIRED", "userId is required to archive a profile fact.");
+      const fact = await store.archive(id, userId);
       if (!fact) return validationError(command, "PROFILE_FACT_NOT_FOUND", "Profile fact not found.");
       const event = await executionContext.eventStore.append({ eventType: "profile_fact.archived", entityType: "profile_fact", entityId: fact.id, domain: definition.slug, manager: definition.manager, capability: "ProfileFactsCapability", worker: "ProfileFactsWorker", payload: factEventPayload(fact), confidence: fact.confidence });
       await updateProfileFactProjections(executionContext, fact.userId, event.id);

@@ -4,6 +4,7 @@ export * from "./job-intelligence/pipeline";
 export { JobIntelligenceManager } from "./job-intelligence/manager";
 export { JobDiscoveryManager } from "./job-discovery/manager";
 export * from "./job-discovery/job-store";
+export * from "./application-packet/manager";
 export * from "./application-packet/services";
 export * from "./research/search-intelligence-playbooks";
 export * from "./opportunity-intelligence/opportunity-playbooks";
@@ -19,6 +20,7 @@ export * from "./resume-factory/resume-templates";
 export * from "./resume-factory/resume-version-store";
 export { DocumentExportManager } from "./document-export/manager";
 export * from "./document-export/document-export-store";
+export * from "./privacy/privacy-service";
 export {
   buildTechnicalResumeDraft,
   extractResumeKeywords,

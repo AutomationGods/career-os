@@ -1,3 +1,4 @@
+import { readFeatureFlags } from "@career-os/config";
 import { domainRegistry } from "@career-os/domains";
 
 function toWorkspaceSlug(label: string) {
@@ -8,44 +9,39 @@ function toWorkspaceSlug(label: string) {
     .replace(/^-|-$/g, "");
 }
 
-const workspaceLabels = [
+const mvpWorkspaceLinks = [
+  { label: "Jobs", href: "/jobs", description: "Paste a job, persist it, and run local segmentation/scoring." },
+  { label: "Application Packets", href: "/application-packets", description: "Create a durable manual application workspace from a saved job." },
+  { label: "Master Resume", href: "/master-resume", description: "Import resume text into reviewable Profile Facts." },
+  { label: "Profile Facts", href: "/profile-facts", description: "Verify or block claims before any draft uses them." },
+  { label: "Resume Factory", href: "/resumes", description: "Generate truthfulness-guarded drafts from verified facts only." },
+  { label: "Documents", href: "/documents", description: "Export local Markdown and DOCX files; no upload or submit." },
+  { label: "Settings", href: "/settings", description: "Export or delete your user-owned Career OS data." }
+];
+
+const futureWorkspaceLabels = [
   "Today’s Mission",
-  "Jobs",
   "Companies",
-  "Applications",
+  "Applications Board",
   "Recruiters / Relationships",
   "Email Center",
   "Calendar / Interviews",
-  "Resume Factory",
-  "Master Resume Import",
-  "Documents",
   "Follow-Ups",
   "Market Intelligence",
   "Skill Gaps",
-  "Settings",
   "System Health",
-  "Approval Requests",
-  "Application Packets",
-  "Packet Detail",
-  "Relationships",
   "Relationship Detail",
   "Job Pipeline Results",
   "Admin / Domain Registry"
 ];
 
-const workspaces = workspaceLabels.map((label) => ({ label, id: toWorkspaceSlug(label) }));
-const primaryWorkspaceIds = new Set(["todays-mission", "jobs", "applications", "admin-domain-registry"]);
-
-const missionCards = [
-  "top remote commercial jobs",
-  "hybrid commercial jobs",
-  "onsite commercial jobs",
-  "clearance/government separated jobs",
-  "low-fit jobs",
-  "jobs ready for packet generation",
-  "packets awaiting review",
-  "follow-ups due placeholder",
-  "estimated apply time placeholder"
+const applyLoopSteps = [
+  "1. Import a pasted job",
+  "2. Create an application packet",
+  "3. Generate review-required drafts",
+  "4. Generate a verified-facts resume",
+  "5. Export locally",
+  "6. Apply manually and update status"
 ];
 
 const jobSections = [
@@ -58,56 +54,45 @@ const jobSections = [
   "Archived / Rejected"
 ];
 
-const appSections = [
-  "Ready to Apply",
+const packetSections = [
+  "Ready to Generate",
   "Awaiting Review",
-  "Submitted",
+  "Ready to Apply Manually",
+  "Submitted Manually",
   "Follow-Up Due",
-  "Interviewing",
-  "Rejected",
-  "Offer Received",
   "Closed"
 ];
 
 export default function Page() {
+  const showPlaceholderDomains = readFeatureFlags().ENABLE_PLACEHOLDER_DOMAINS;
+
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">Career OS</div>
-        <nav className="nav">
-          {workspaces.map((workspace) => (
-            <a key={workspace.id} href={`#${workspace.id}`}>
-              {workspace.label}
-            </a>
-          ))}
-        </nav>
-      </aside>
-      <main className="main">
-        <span className="badge">Platform-first foundation</span>
-        <h1>Reusable automation platform running Career OS</h1>
-        <p className="muted">
-          Event-driven dashboard shell with human approval gates; no auto-submit and no LinkedIn scraping.
-        </p>
+    <main className="main">
+      <span className="badge">Manual-safe MVP apply loop</span>
+      <h1>Career OS for applying to jobs today</h1>
+      <p className="muted">
+        Import jobs, create packets, generate verified-facts drafts, export locally, and track manual status. No auto-submit, email send, upload, scraping, or browser automation.
+      </p>
 
         <section className="section">
           <h2>Source of Truth</h2>
           <div className="grid">
-            <a className="card" href="/jobs"><strong>Jobs</strong><p className="muted">Persist pasted job data and run local segmentation/scoring.</p></a>
-            <a className="card" href="/master-resume"><strong>Master Resume Import</strong><p className="muted">Paste resume text into needs-review Profile Facts.</p></a>
-            <a className="card" href="/profile-facts"><strong>Profile Facts</strong><p className="muted">Verify or block facts before document generation.</p></a>
-            <a className="card" href="/resumes"><strong>Resume Factory</strong><p className="muted">Generate drafts from verified facts only.</p></a>
-            <a className="card" href="/documents"><strong>Documents</strong><p className="muted">Download local Markdown and DOCX exports.</p></a>
+            {mvpWorkspaceLinks.map((workspace) => (
+              <a className="card" href={workspace.href} key={workspace.href}>
+                <strong>{workspace.label}</strong>
+                <p className="muted">{workspace.description}</p>
+              </a>
+            ))}
           </div>
         </section>
 
-        <section id="todays-mission" className="section">
-          <h2>Today’s Mission</h2>
+        <section className="section">
+          <h2>Apply Loop</h2>
           <div className="grid">
-            {missionCards.map((item) => (
+            {applyLoopSteps.map((item) => (
               <div className="card" key={item}>
-                <strong>0</strong>
-                <br />
-                <span className="muted">{item}</span>
+                <strong>{item}</strong>
+                <p className="muted">Implemented in the MVP path.</p>
               </div>
             ))}
           </div>
@@ -119,45 +104,54 @@ export default function Page() {
             {jobSections.map((section) => (
               <div className="card" key={section}>
                 {section}
-                <p className="muted">Segmented, never blindly deleted.</p>
+                <p className="muted">Segmented local job evidence; never blindly deleted.</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="applications" className="section">
-          <h2>Applications</h2>
+        <section id="application-packets" className="section">
+          <h2>Application Packets</h2>
           <div className="grid">
-            {appSections.map((section) => (
-              <div className="card" key={section}>{section}</div>
-            ))}
-          </div>
-        </section>
-
-        {workspaces
-          .filter((workspace) => !primaryWorkspaceIds.has(workspace.id))
-          .map((workspace) => (
-            <section id={workspace.id} className="section" key={workspace.id}>
-              <h2>{workspace.label}</h2>
-              <div className="card">
-                <span className="muted">Workspace navigation target.</span>
-              </div>
-            </section>
-          ))}
-
-        <section id="admin-domain-registry" className="section">
-          <h2>Domain Registry</h2>
-          <div className="grid">
-            {domainRegistry.map((domain) => (
-              <div className="card" key={domain.slug}>
-                <strong>{domain.name}</strong>
-                <p className="muted">{domain.manager}</p>
-                <span className="badge">{domain.status}</span>
+            {packetSections.map((section) => (
+              <div className="card" key={section}>
+                {section}
+                <p className="muted">Durable packet status for manual application tracking.</p>
               </div>
             ))}
           </div>
         </section>
-      </main>
-    </div>
+
+        {showPlaceholderDomains ? (
+          <section id="future-modules" className="section">
+            <h2>Future modules</h2>
+            <p className="muted">These modules stay registered for the platform roadmap, but they are parked until after the MVP apply loop.</p>
+            <div className="grid">
+              {futureWorkspaceLabels.map((label) => (
+                <div className="card" id={toWorkspaceSlug(label)} key={label}>
+                  <strong>{label}</strong>
+                  <p className="muted">Future expansion module; not presented as production-ready today.</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {showPlaceholderDomains ? (
+          <section id="admin-domain-registry" className="section">
+            <h2>Domain Registry</h2>
+            <p className="muted">Registry status is honest: placeholder domains are not part of the shipped MVP loop.</p>
+            <div className="grid">
+              {domainRegistry.map((domain) => (
+                <div className="card" key={domain.slug}>
+                  <strong>{domain.name}</strong>
+                  <p className="muted">{domain.manager}</p>
+                  <span className="badge">{domain.status}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+    </main>
   );
 }

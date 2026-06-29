@@ -1,6 +1,6 @@
 import { localApprovalRequestService } from "@career-os/orchestration";
 import { getApproval } from "../_handlers";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  return getApproval(localApprovalRequestService, params.id);
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return getApproval(localApprovalRequestService, (await params).id, request);
 }

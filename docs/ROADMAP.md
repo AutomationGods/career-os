@@ -100,9 +100,18 @@ Career OS is the first flagship application on a reusable event-driven automatio
 - Application Packets and Resume Factory can hydrate from a persisted `jobId`.
 - URL fetching, crawling, scraping, browser automation, upload, submission, email, Gmail, Calendar, LinkedIn scraping, AI provider calls, and auto-apply remain excluded.
 
+### Phase 11 — Application Packets v1
+
+- `ApplicationPacketStore` adds in-memory and Prisma-backed persistence through `Application`, `ApplicationPacket`, and `ApplicationStatusHistory`.
+- `ApplicationPacketManager` handles create/list/get/generate/update-status commands through the orchestrator.
+- `/application-packets` lists durable packets by manual workflow status and creates packets from saved jobs.
+- `/application-packets/[id]` ties job → packet → drafts → verified-facts resume → local export → manual status tracking.
+- Cover-letter and recruiter-message drafts are deterministic, copyable, and review-required; unsupported certifications, clearance, dates, titles, metrics, tools, and work authorization remain unclaimed.
+- The dashboard now labels non-MVP domains as future modules instead of production-ready workspaces.
+
 ## Next recommended foundation work
 
-Build persisted Application Packet records and attach generated documents to durable application workflows.
+Add real authentication and per-user tenancy before turning the single-user MVP into a public SaaS.
 
 ## Explicitly deferred
 
@@ -118,3 +127,8 @@ Do not implement these until the foundation is stable and approval gates are enf
 - proxy scraping
 - CAPTCHA bypassing
 - full AI resume generation
+- billing/subscriptions
+- support/help center
+- production deployment hardening
+- analytics/observability dashboards
+- true external job search integrations

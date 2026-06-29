@@ -15,6 +15,6 @@ function createLocalReplayCommandBus() {
   return createApprovedReplayCommandBus(orchestrator);
 }
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
-  return replayApproval(localApprovalRequestService, createLocalReplayCommandBus(), params.id);
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return replayApproval(localApprovalRequestService, createLocalReplayCommandBus(), (await params).id, request);
 }

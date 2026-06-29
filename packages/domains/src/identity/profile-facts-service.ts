@@ -62,11 +62,11 @@ export interface ProfileFactsListInput {
 export interface ProfileFactsStore {
   create(input: ProfileFactInput): Promise<ProfileFactRecord> | ProfileFactRecord;
   update(input: ProfileFactUpdateInput): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
-  getById(id: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
+  getById(id: string, currentUserId?: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
   list(input: ProfileFactsListInput): Promise<ProfileFactRecord[]> | ProfileFactRecord[];
-  verify(id: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
+  verify(id: string, currentUserId?: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
   block(input: { userId: string; id?: string; label?: string; factType?: string; blockedReason: string }): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
-  archive(id: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
+  archive(id: string, currentUserId?: string): Promise<ProfileFactRecord | undefined> | ProfileFactRecord | undefined;
   seedInitial(userId: string): Promise<{ facts: ProfileFactRecord[]; createdCount: number; skippedCount: number }> | { facts: ProfileFactRecord[]; createdCount: number; skippedCount: number };
 }
 
@@ -343,14 +343,16 @@ export class InMemoryProfileFactsStore implements ProfileFactsStore {
 
   update(input: ProfileFactUpdateInput) {
     const existing = this.facts.get(input.id);
-    if (!existing) return undefined;
+    if (!existing || (input.userId && existing.userId !== input.userId)) return undefined;
     const updated = applyUpdate(existing, input);
     this.facts.set(updated.id, updated);
     return updated;
   }
 
-  getById(id: string) {
-    return this.facts.get(id);
+  getById(id: string, currentUserId?: string) {
+    const fact = this.facts.get(id);
+    if (!fact || (currentUserId && fact.userId !== currentUserId)) return undefined;
+    return fact;
   }
 
   list(input: ProfileFactsListInput) {
@@ -359,19 +361,19 @@ export class InMemoryProfileFactsStore implements ProfileFactsStore {
     return selectEffectiveProfileFacts(facts);
   }
 
-  verify(id: string) {
-    return this.update({ id, verificationStatus: "verified", allowedInResume: true, allowedInCoverLetter: true, allowedInRecruiterMessage: true, requiresReview: false, isBlocked: false });
+  verify(id: string, currentUserId?: string) {
+    return this.update({ id, userId: currentUserId, verificationStatus: "verified", allowedInResume: true, allowedInCoverLetter: true, allowedInRecruiterMessage: true, requiresReview: false, isBlocked: false });
   }
 
   block(input: { userId: string; id?: string; label?: string; factType?: string; blockedReason: string }) {
-    const existing = input.id ? this.facts.get(input.id) : [...this.facts.values()].find((fact) => fact.userId === input.userId && fact.label.toLowerCase() === cleanString(input.label).toLowerCase() && (!input.factType || fact.factType === input.factType));
-    if (existing) return this.update({ id: existing.id, verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
+    const existing = input.id ? this.getById(input.id, input.userId) : [...this.facts.values()].find((fact) => fact.userId === input.userId && fact.label.toLowerCase() === cleanString(input.label).toLowerCase() && (!input.factType || fact.factType === input.factType));
+    if (existing) return this.update({ id: existing.id, userId: input.userId, verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
     if (!input.label) return undefined;
     return this.create({ userId: input.userId, factType: input.factType ?? "blocked_claim", category: "blocked_claim", label: input.label, value: input.label, sourceType: "manual", verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
   }
 
-  archive(id: string) {
-    return this.update({ id, archivedAt: new Date() });
+  archive(id: string, currentUserId?: string) {
+    return this.update({ id, userId: currentUserId, archivedAt: new Date() });
   }
 
   seedInitial(userId: string) {
@@ -417,7 +419,7 @@ export class PrismaProfileFactsStore implements ProfileFactsStore {
   }
 
   async update(input: ProfileFactUpdateInput) {
-    const existing = await this.getById(input.id);
+    const existing = await this.getById(input.id, input.userId);
     if (!existing) return undefined;
     const updated = applyUpdate(existing, input);
     const row = this.client.profileFact
@@ -426,9 +428,11 @@ export class PrismaProfileFactsStore implements ProfileFactsStore {
     return toRecord(row);
   }
 
-  async getById(id: string) {
+  async getById(id: string, currentUserId?: string) {
     const row = this.client.profileFact ? await this.client.profileFact.findUnique({ where: { id } }) : await this.rawFindFirst("WHERE id = $1", [id]);
-    return toRecord(row);
+    const fact = toRecord(row);
+    if (!fact || (currentUserId && fact.userId !== currentUserId)) return undefined;
+    return fact;
   }
 
   async list(input: ProfileFactsListInput) {
@@ -440,19 +444,19 @@ export class PrismaProfileFactsStore implements ProfileFactsStore {
     return selectEffectiveProfileFacts(facts);
   }
 
-  async verify(id: string) {
-    return this.update({ id, verificationStatus: "verified", allowedInResume: true, allowedInCoverLetter: true, allowedInRecruiterMessage: true, requiresReview: false, isBlocked: false });
+  async verify(id: string, currentUserId?: string) {
+    return this.update({ id, userId: currentUserId, verificationStatus: "verified", allowedInResume: true, allowedInCoverLetter: true, allowedInRecruiterMessage: true, requiresReview: false, isBlocked: false });
   }
 
   async block(input: { userId: string; id?: string; label?: string; factType?: string; blockedReason: string }) {
-    const existing = input.id ? await this.getById(input.id) : await this.findByIdentity(input.userId, input.label, input.factType);
-    if (existing) return this.update({ id: existing.id, verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
+    const existing = input.id ? await this.getById(input.id, input.userId) : await this.findByIdentity(input.userId, input.label, input.factType);
+    if (existing) return this.update({ id: existing.id, userId: input.userId, verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
     if (!input.label) return undefined;
     return this.create({ userId: input.userId, factType: input.factType ?? "blocked_claim", category: "blocked_claim", label: input.label, value: input.label, sourceType: "manual", verificationStatus: "blocked", allowedInResume: false, allowedInCoverLetter: false, allowedInRecruiterMessage: false, requiresReview: false, isBlocked: true, blockedReason: input.blockedReason });
   }
 
-  archive(id: string) {
-    return this.update({ id, archivedAt: new Date() });
+  archive(id: string, currentUserId?: string) {
+    return this.update({ id, userId: currentUserId, archivedAt: new Date() });
   }
 
   async seedInitial(userId: string) {

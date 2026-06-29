@@ -1,8 +1,11 @@
+import { requirePageUser } from "../_lib/page-auth";
 import DocumentsPanel from "./documents-panel";
 
 export const dynamic = "force-dynamic";
 
-export default function DocumentsPage() {
+export default async function DocumentsPage() {
+  await requirePageUser();
+
   return (
     <main className="main">
       <span className="badge">Local exports</span>

@@ -1,13 +1,16 @@
+import { readFeatureFlags } from "@career-os/config";
 import { localApprovalRequestService } from "@career-os/orchestration";
+import { requirePageUser, type PageUser } from "../_lib/page-auth";
 import ApprovalTestPanel from "./ApprovalTestPanel";
 import type { ApprovalView } from "./approval-test-panel-model";
 
 export const dynamic = "force-dynamic";
 
-async function getApprovals(): Promise<ApprovalView[]> {
+async function getApprovals(user: PageUser): Promise<ApprovalView[]> {
   try {
     const approvals = await localApprovalRequestService.list();
-    return approvals.map((approval) => ({
+    const visibleApprovals = user.role === "admin" ? approvals : approvals.filter((approval) => approval.userId === user.id);
+    return visibleApprovals.map((approval) => ({
       id: approval.id,
       userId: approval.userId,
       commandId: approval.commandId,
@@ -33,13 +36,15 @@ async function getApprovals(): Promise<ApprovalView[]> {
 }
 
 export default async function ApprovalsPage() {
-  const approvals = await getApprovals();
+  const user = await requirePageUser();
+  const approvals = await getApprovals(user);
+  const showDevCommandControls = process.env.NODE_ENV !== "production" || readFeatureFlags().ENABLE_DEV_COMMANDS;
 
   return (
     <main className="main">
       <h1>Approval Requests</h1>
       <p className="muted">Sensitive commands wait here for human approval before execution.</p>
-      <ApprovalTestPanel initialApprovals={approvals} />
+      <ApprovalTestPanel initialApprovals={approvals} showDevCommandControls={showDevCommandControls} />
     </main>
   );
 }

@@ -26,11 +26,11 @@ export interface CareerEventRecord extends CareerEventInput {
 export interface EventStore {
   append(event: CareerEventInput): CareerEventRecord | Promise<CareerEventRecord>;
   appendMany(events: CareerEventInput[]): CareerEventRecord[] | Promise<CareerEventRecord[]>;
-  getById(id: string): CareerEventRecord | undefined | Promise<CareerEventRecord | undefined>;
-  listByEntity(entityType: string, entityId: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
-  listByType(eventType: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
-  listByDomain(domain: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
-  listRecent(limit: number): CareerEventRecord[] | Promise<CareerEventRecord[]>;
+  getById(id: string, currentUserId?: string): CareerEventRecord | undefined | Promise<CareerEventRecord | undefined>;
+  listByEntity(entityType: string, entityId: string, currentUserId?: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
+  listByType(eventType: string, currentUserId?: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
+  listByDomain(domain: string, currentUserId?: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
+  listRecent(limit: number, currentUserId?: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
   listByUser(userId: string): CareerEventRecord[] | Promise<CareerEventRecord[]>;
 }
 
@@ -83,24 +83,26 @@ export class InMemoryEventStore implements EventStore {
     return events.map((event) => this.append(event));
   }
 
-  getById(id: string) {
-    return this.events.find((event) => event.id === id);
+  getById(id: string, currentUserId?: string) {
+    const event = this.events.find((item) => item.id === id);
+    if (!event || (currentUserId && event.userId !== currentUserId)) return undefined;
+    return event;
   }
 
-  listByEntity(entityType: string, entityId: string) {
-    return this.events.filter((event) => event.entityType === entityType && event.entityId === entityId);
+  listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    return this.events.filter((event) => event.entityType === entityType && event.entityId === entityId && (!currentUserId || event.userId === currentUserId));
   }
 
-  listByType(eventType: string) {
-    return this.events.filter((event) => event.eventType === eventType);
+  listByType(eventType: string, currentUserId?: string) {
+    return this.events.filter((event) => event.eventType === eventType && (!currentUserId || event.userId === currentUserId));
   }
 
-  listByDomain(domain: string) {
-    return this.events.filter((event) => event.domain === domain);
+  listByDomain(domain: string, currentUserId?: string) {
+    return this.events.filter((event) => event.domain === domain && (!currentUserId || event.userId === currentUserId));
   }
 
-  listRecent(limit: number) {
-    return [...this.events].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+  listRecent(limit: number, currentUserId?: string) {
+    return [...this.events].filter((event) => !currentUserId || event.userId === currentUserId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
   }
 
   listByUser(userId: string) {
@@ -148,24 +150,26 @@ export class PrismaEventStore implements EventStore {
     return Promise.all(events.map((event) => this.append(event)));
   }
 
-  async getById(id: string) {
-    return toRecord(await this.client.event.findUnique({ where: { id } }));
+  async getById(id: string, currentUserId?: string) {
+    const event = toRecord(await this.client.event.findUnique({ where: { id } }));
+    if (!event || (currentUserId && event.userId !== currentUserId)) return undefined;
+    return event;
   }
 
-  async listByEntity(entityType: string, entityId: string) {
-    return toRecords(await this.client.event.findMany({ where: { entityType, entityId }, orderBy: { createdAt: "asc" } }));
+  async listByEntity(entityType: string, entityId: string, currentUserId?: string) {
+    return toRecords(await this.client.event.findMany({ where: { entityType, entityId, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { createdAt: "asc" } }));
   }
 
-  async listByType(eventType: string) {
-    return toRecords(await this.client.event.findMany({ where: { eventType }, orderBy: { createdAt: "desc" } }));
+  async listByType(eventType: string, currentUserId?: string) {
+    return toRecords(await this.client.event.findMany({ where: { eventType, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { createdAt: "desc" } }));
   }
 
-  async listByDomain(domain: string) {
-    return toRecords(await this.client.event.findMany({ where: { domain }, orderBy: { createdAt: "desc" } }));
+  async listByDomain(domain: string, currentUserId?: string) {
+    return toRecords(await this.client.event.findMany({ where: { domain, ...(currentUserId ? { userId: currentUserId } : {}) }, orderBy: { createdAt: "desc" } }));
   }
 
-  async listRecent(limit: number) {
-    return toRecords(await this.client.event.findMany({ take: limit, orderBy: { createdAt: "desc" } }));
+  async listRecent(limit: number, currentUserId?: string) {
+    return toRecords(await this.client.event.findMany({ where: currentUserId ? { userId: currentUserId } : undefined, take: limit, orderBy: { createdAt: "desc" } }));
   }
 
   async listByUser(userId: string) {

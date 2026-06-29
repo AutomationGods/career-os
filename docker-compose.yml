@@ -5,10 +5,76 @@ services:
       POSTGRES_USER: career_os
       POSTGRES_PASSWORD: career_os
       POSTGRES_DB: career_os
-    ports: ["${POSTGRES_HOST_PORT:-55434}:5432"]
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    ports:
+      - "${POSTGRES_HOST_PORT:-55434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U career_os -d career_os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      target: web
+    command: npm run dev -w @career-os/web
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://career_os:career_os@postgres:5432/career_os?schema=public
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-local-dev-only-generate-a-real-secret-before-production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      ENABLE_DEV_COMMANDS: ${ENABLE_DEV_COMMANDS:-false}
+      ENABLE_PLACEHOLDER_DOMAINS: ${ENABLE_PLACEHOLDER_DOMAINS:-false}
+      ENABLE_EXTERNAL_COLLECTORS: ${ENABLE_EXTERNAL_COLLECTORS:-false}
+      ENABLE_PRODUCTION_DEMO_DATA: ${ENABLE_PRODUCTION_DEMO_DATA:-false}
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"import('ioredis').then(async ({default: Redis})=>{const redis=new Redis(process.env.REDIS_URL); await redis.ping(); redis.disconnect(); process.exit(0);}).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   postgres_data:

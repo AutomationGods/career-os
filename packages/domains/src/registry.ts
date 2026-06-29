@@ -14,6 +14,7 @@ import { definition as knowledge } from "./knowledge/manager";
 import { definition as memory } from "./memory/manager";
 import { definition as observability } from "./observability/manager";
 import { definition as qa } from "./qa/manager";
+import { definition as privacy } from "./privacy/manager";
 import { definition as workflow } from "./workflow/manager";
 import { definition as mission } from "./mission/manager";
 import { definition as event_store } from "./event-store/manager";
@@ -77,6 +78,7 @@ export const domainRegistry: DomainDefinition[] = [
   memory,
   observability,
   qa,
+  privacy,
   workflow,
   mission,
   event_store,

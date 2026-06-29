@@ -1,10 +1,17 @@
 import { prismaEventStore } from "@career-os/events";
 import { errorMessage, fail, ok } from "../../../../_lib/responses";
+import { requireUser, sessionErrorResponse } from "../../../../_lib/session";
 
-export async function GET(_request: Request, { params }: { params: { entityType: string; entityId: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ entityType: string; entityId: string }> }) {
   try {
-    return ok(await prismaEventStore.listByEntity(params.entityType, params.entityId));
+    const user = await requireUser(request);
+    const events = await prismaEventStore.listByEntity((await params).entityType, (await params).entityId, user.role === "admin" ? undefined : user.id);
+    return ok(events);
   } catch (error) {
-    return fail(errorMessage(error), "EVENT_ENTITY_LOOKUP_FAILED", 500);
+    try {
+      return sessionErrorResponse(error);
+    } catch {
+      return fail(errorMessage(error), "EVENT_ENTITY_LOOKUP_FAILED", 500);
+    }
   }
 }

@@ -1,8 +1,11 @@
+import { requirePageUser } from "../_lib/page-auth";
 import ProfileFactsPanel from "./profile-facts-panel";
 
 export const dynamic = "force-dynamic";
 
-export default function ProfileFactsPage() {
+export default async function ProfileFactsPage() {
+  await requirePageUser();
+
   return (
     <main className="main">
       <span className="badge">Source of truth</span>

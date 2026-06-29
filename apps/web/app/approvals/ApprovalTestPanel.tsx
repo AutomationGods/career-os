@@ -12,6 +12,7 @@ import {
 
 interface ApprovalTestPanelProps {
   initialApprovals: ApprovalView[];
+  showDevCommandControls: boolean;
 }
 
 type LoadingAction = "refresh" | "allowed" | "requires-approval" | "denied" | "approve" | "reject" | "cancel" | "replay";
@@ -86,7 +87,7 @@ function LatestErrorResult({ summary }: { summary?: CommandSummary }) {
   );
 }
 
-export default function ApprovalTestPanel({ initialApprovals }: ApprovalTestPanelProps) {
+export default function ApprovalTestPanel({ initialApprovals, showDevCommandControls }: ApprovalTestPanelProps) {
   const [approvals, setApprovals] = useState(initialApprovals);
   const [loadingAction, setLoadingAction] = useState<LoadingAction | null>(null);
   const [successMessage, setSuccessMessage] = useState("Ready to exercise approval policy.");
@@ -187,33 +188,35 @@ export default function ApprovalTestPanel({ initialApprovals }: ApprovalTestPane
     <>
       <CountCards counts={counts} />
 
-      <section className="section">
-        <h2>Approval Test Panel</h2>
-        <p className="muted">Rendering audit: this workspace is mixed. The page fetches initial data on the server, then this client panel uses the approval and dev command API routes for all interactions.</p>
-        <p className="muted">These local commands only exercise permission policy. They do not send email, submit applications, upload files, or use browser automation.</p>
-        <div className="card" aria-live="polite">
-          <strong>Panel status: {statusLabel(loadingAction)}</strong>
-          <p className="muted">Success: {successMessage}</p>
-          {errorMessage ? <p role="alert">Error: {errorMessage}</p> : null}
-        </div>
-        <div className="grid">
-          <div className="card">
-            <strong>Allowed test</strong>
-            <p className="muted">Runs safe `jobs.run_pipeline` demo data.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("allowed")}>Run Allowed Test Command</button>
+      {showDevCommandControls ? (
+        <section className="section">
+          <h2>Approval Test Panel</h2>
+          <p className="muted">Rendering audit: this workspace is mixed. The page fetches initial data on the server, then this client panel uses the approval and dev command API routes for all interactions.</p>
+          <p className="muted">These local commands only exercise permission policy. They do not send email, submit applications, upload files, or use browser automation.</p>
+          <div className="card" aria-live="polite">
+            <strong>Panel status: {statusLabel(loadingAction)}</strong>
+            <p className="muted">Success: {successMessage}</p>
+            {errorMessage ? <p role="alert">Error: {errorMessage}</p> : null}
           </div>
-          <div className="card">
-            <strong>Requires approval test</strong>
-            <p className="muted">Posts `email.send` demo data to create a pending approval without sending email.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("requires-approval")}>Run Requires Approval Test Command</button>
+          <div className="grid">
+            <div className="card">
+              <strong>Allowed test</strong>
+              <p className="muted">Runs safe `jobs.run_pipeline` demo data.</p>
+              <button type="button" disabled={isLoading} onClick={() => void runDevCommand("allowed")}>Run Allowed Test Command</button>
+            </div>
+            <div className="card">
+              <strong>Requires approval test</strong>
+              <p className="muted">Posts `email.send` demo data to create a pending approval without sending email.</p>
+              <button type="button" disabled={isLoading} onClick={() => void runDevCommand("requires-approval")}>Run Requires Approval Test Command</button>
+            </div>
+            <div className="card">
+              <strong>Denied test</strong>
+              <p className="muted">Posts `application.auto_submit` demo data that policy rejects.</p>
+              <button type="button" disabled={isLoading} onClick={() => void runDevCommand("denied")}>Run Denied Test Command</button>
+            </div>
           </div>
-          <div className="card">
-            <strong>Denied test</strong>
-            <p className="muted">Posts `application.auto_submit` demo data that policy rejects.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("denied")}>Run Denied Test Command</button>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="section">
         <h2>Latest results</h2>

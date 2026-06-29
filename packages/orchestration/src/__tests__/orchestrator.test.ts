@@ -1,4 +1,4 @@
-import { InMemoryJobStore, InMemoryResumeVersionStore } from "@career-os/domains";
+import { InMemoryApplicationPacketStore, InMemoryJobStore, InMemoryProfileFactsStore, InMemoryResumeVersionStore } from "@career-os/domains";
 import { InMemoryEventStore } from "@career-os/events";
 import { InMemorySnapshotStore } from "@career-os/snapshots";
 import { InMemoryStateStore } from "@career-os/state";
@@ -14,10 +14,12 @@ function createTestPlatform() {
   const snapshotStore = new InMemorySnapshotStore();
   const approvals = new InMemoryApprovalRequestService(eventStore);
   const resumeVersionStore = new InMemoryResumeVersionStore();
+  const applicationPacketStore = new InMemoryApplicationPacketStore();
+  const profileFactsStore = new InMemoryProfileFactsStore();
   const jobStore = new InMemoryJobStore();
-  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals, resumeVersionStore, jobStore });
+  const orchestrator = createOrchestrator({ eventStore, stateStore, snapshotStore, permissions: new PermissionPolicyService(), approvals, resumeVersionStore, applicationPacketStore, profileFactsStore, jobStore });
   const bus = createCommandBus(orchestrator);
-  return { eventStore, stateStore, snapshotStore, approvals, orchestrator, bus, jobStore };
+  return { eventStore, stateStore, snapshotStore, approvals, orchestrator, bus, jobStore, applicationPacketStore, profileFactsStore };
 }
 
 describe("Orchestrator", () => {
@@ -241,9 +243,10 @@ describe("Orchestrator", () => {
     const packetResult = await bus.execute(createCommand({
       type: "application_packets.create",
       requestedBy: "api",
+      userId: "user-1",
       entityType: "job",
       entityId: imported.job.id,
-      payload: { jobId: imported.job.id }
+      payload: { userId: "user-1", jobId: imported.job.id }
     }));
     const packet = packetResult.data as { jobId: string; selectedJob: { title: string }; selectedCompany?: { name: string }; fitScoreSummary: { score: number } };
 

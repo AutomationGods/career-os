@@ -1,8 +1,11 @@
+import { requirePageUser } from "../_lib/page-auth";
 import MasterResumePanel from "./master-resume-panel";
 
 export const dynamic = "force-dynamic";
 
-export default function MasterResumePage() {
+export default async function MasterResumePage() {
+  await requirePageUser();
+
   return (
     <main className="main">
       <span className="badge">Source of truth</span>

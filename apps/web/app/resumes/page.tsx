@@ -1,8 +1,11 @@
+import { requirePageUser } from "../_lib/page-auth";
 import ResumeDemoPanel from "./resume-demo-panel";
 
 export const dynamic = "force-dynamic";
 
-export default function ResumesPage() {
+export default async function ResumesPage() {
+  await requirePageUser();
+
   return (
     <main className="main">
       <span className="badge">Local review only</span>

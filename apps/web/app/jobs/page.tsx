@@ -1,6 +1,9 @@
+import { requirePageUser } from "../_lib/page-auth";
 import JobsPanel from "./jobs-panel";
 
-export default function JobsPage() {
+export default async function JobsPage() {
+  await requirePageUser();
+
   return (
     <main className="main">
       <span className="badge">B1 manual persisted job discovery</span>

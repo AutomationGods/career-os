@@ -1,2 +1,15 @@
-const sections = ["ready_to_generate", "awaiting_review", "ready_to_apply", "followup_due", "closed"];
-export default function ApplicationPacketsPage(){ return <main className="main"><h1>Application Packets</h1><p className="muted">Packets connect jobs, companies, recruiters, fit summaries, placeholders, notes, status, and next action.</p><div className="grid">{sections.map((section)=><div className="card" key={section}><strong>{section}</strong><p className="muted">API-backed section placeholder.</p></div>)}</div></main>; }
+import { requirePageUser } from "../_lib/page-auth";
+import ApplicationPacketsPanel from "./application-packets-panel";
+
+export default async function ApplicationPacketsPage() {
+  await requirePageUser();
+
+  return (
+    <main className="main">
+      <span className="badge">MVP apply loop</span>
+      <h1>Application Packets</h1>
+      <p className="muted">Create durable job application workspaces, generate review-required drafts, and track manual status.</p>
+      <ApplicationPacketsPanel />
+    </main>
+  );
+}

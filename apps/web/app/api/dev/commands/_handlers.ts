@@ -1,8 +1,17 @@
+import { readFeatureFlags } from "@career-os/config";
 import { InMemoryEventStore } from "@career-os/events";
 import { localApprovalRequestService, PermissionPolicyService, createCommand, createCommandBus, createOrchestrator, type CommandBus } from "@career-os/orchestration";
 import { InMemorySnapshotStore } from "@career-os/snapshots";
 import { InMemoryStateStore } from "@career-os/state";
-import { commandResult } from "../../_lib/responses";
+import { commandResult, fail } from "../../_lib/responses";
+
+function devCommandsBlocked() {
+  return process.env.NODE_ENV === "production" && !readFeatureFlags().ENABLE_DEV_COMMANDS;
+}
+
+function devCommandsBlockedResponse() {
+  return fail("Not found.", "NOT_FOUND", 404);
+}
 
 export function createLocalApprovalDemoCommandBus() {
   const eventStore = new InMemoryEventStore();
@@ -16,11 +25,12 @@ export function createLocalApprovalDemoCommandBus() {
   return createCommandBus(orchestrator);
 }
 
-export async function runAllowedCommand(bus: CommandBus) {
+export async function runAllowedCommand(bus: CommandBus, userId = "local-user") {
+  if (devCommandsBlocked()) return devCommandsBlockedResponse();
   const command = createCommand({
     type: "jobs.run_pipeline",
     requestedBy: "api",
-    userId: "local-user",
+    userId,
     entityType: "job",
     entityId: `dev-job-${Date.now()}`,
     payload: {
@@ -35,11 +45,12 @@ export async function runAllowedCommand(bus: CommandBus) {
   return commandResult(await bus.execute(command));
 }
 
-export async function runRequiresApprovalCommand(bus: CommandBus) {
+export async function runRequiresApprovalCommand(bus: CommandBus, userId = "local-user") {
+  if (devCommandsBlocked()) return devCommandsBlockedResponse();
   const command = createCommand({
     type: "email.send",
     requestedBy: "api",
-    userId: "local-user",
+    userId,
     entityType: "email",
     entityId: `dev-email-${Date.now()}`,
     payload: {
@@ -52,11 +63,12 @@ export async function runRequiresApprovalCommand(bus: CommandBus) {
   return commandResult(await bus.execute(command));
 }
 
-export async function runDeniedCommand(bus: CommandBus) {
+export async function runDeniedCommand(bus: CommandBus, userId = "local-user") {
+  if (devCommandsBlocked()) return devCommandsBlockedResponse();
   const command = createCommand({
     type: "application.auto_submit",
     requestedBy: "api",
-    userId: "local-user",
+    userId,
     entityType: "application",
     entityId: `dev-application-${Date.now()}`,
     payload: {

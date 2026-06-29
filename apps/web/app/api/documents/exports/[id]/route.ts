@@ -2,6 +2,6 @@ import { getDocumentExport } from "../../_handlers";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  return getDocumentExport(params.id);
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return getDocumentExport((await params).id, request);
 }

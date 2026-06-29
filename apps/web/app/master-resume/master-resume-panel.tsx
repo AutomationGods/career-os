@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  MASTER_RESUME_DEMO_USER_ID,
   SAMPLE_MASTER_RESUME_TEXT,
   countReviewQueueByStatus,
   masterResumeResultFromEnvelope,
@@ -78,7 +77,7 @@ export default function MasterResumePanel() {
   }, []);
 
   async function refreshMasterResume() {
-    const response = await fetch(`/api/master-resume?userId=${encodeURIComponent(MASTER_RESUME_DEMO_USER_ID)}`, { cache: "no-store" });
+    const response = await fetch("/api/master-resume", { cache: "no-store" });
     const body = await readJson(response);
     if (!response.ok) throw new Error(apiErrorMessage(body, "Could not load Master Resume."));
     setResult(masterResumeResultFromEnvelope(body));
@@ -92,7 +91,7 @@ export default function MasterResumePanel() {
       const response = await fetch("/api/master-resume/import", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: MASTER_RESUME_DEMO_USER_ID, resumeText, source: "pasted_plain_text" })
+        body: JSON.stringify({ resumeText, source: "pasted_plain_text" })
       });
       const body = await readJson(response);
       const parsedResult = masterResumeResultFromEnvelope(body);
@@ -131,7 +130,7 @@ export default function MasterResumePanel() {
       const response = await fetch(`/api/profile-facts/${encodeURIComponent(fact.id)}/block`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId: MASTER_RESUME_DEMO_USER_ID, label: fact.label, factType: fact.factType, blockedReason: "Blocked during Master Resume review." })
+        body: JSON.stringify({ label: fact.label, factType: fact.factType, blockedReason: "Blocked during Master Resume review." })
       });
       const body = await readJson(response);
       if (!response.ok) throw new Error(apiErrorMessage(body, "Could not block fact."));

@@ -1,5 +1,5 @@
 import { verifyProfileFact } from "../../_handlers";
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
-  return verifyProfileFact(params.id);
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return verifyProfileFact((await params).id, request);
 }

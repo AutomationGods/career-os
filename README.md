@@ -108,15 +108,26 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - Resume Factory can hydrate company/role/description from a persisted `jobId`; bullets still come from verified Profile Facts only.
 - No URL fetching, crawling, scraping, browser automation, upload, submission, email, Gmail, Calendar, LinkedIn scraping, AI provider call, or auto-apply is performed.
 
+## Phase 11 Application Packets v1
+
+- Career OS MVP is now the manual-safe apply loop: Jobs → Application Packets → Profile Facts → Resume Factory → Documents → manual status tracking.
+- Application Packets persist through `Application`, `ApplicationPacket`, and `ApplicationStatusHistory` instead of module-global memory.
+- `/application-packets` lists durable packets by status and creates packets from persisted job IDs.
+- `/application-packets/[id]` shows selected job/company, fit summary, copyable resume/cover-letter/recruiter-message drafts, local resume generation, local export, and manual status buttons.
+- Drafts are deterministic and include verified-facts-only warnings; certifications, clearance, metrics, and work authorization must be verified before use.
+- Placeholder domains remain registered as future modules, but they are not presented as production-ready MVP features.
+
 ## Resume Factory local demo
 
 ```bash
 npm run dev
 ```
 
-Then open `http://localhost:3000/jobs`, import the demo pasted Splunk/Cribl job, open `http://localhost:3000/master-resume`, click `Import + Safety Blocks`, verify one Splunk/Cribl fact, open `http://localhost:3000/profile-facts`, confirm the source-of-truth state, open `http://localhost:3000/resumes`, and click `Generate Demo Splunk/Cribl Resume`.
+If Google OAuth is not configured in local development, sign in at `http://localhost:3000/api/auth/signin` with the built-in development email provider. The default email is `local-user@career-os.local`.
 
-Confirm the preview appears, truthfulness status appears, verified Profile Facts are used, needs-review facts are ignored, CISSP/Security+/clearance remain blocked, export Markdown and DOCX locally, and confirm no email/upload/submit/apply action happened.
+Then open `http://localhost:3000/jobs`, import the demo pasted Splunk/Cribl job, click `Create application packet` on the saved job, open the created packet, generate packet drafts, open `http://localhost:3000/master-resume`, click `Import + Safety Blocks`, verify one Splunk/Cribl fact, open `http://localhost:3000/profile-facts`, confirm the source-of-truth state, generate a resume from the packet, export Markdown/DOCX locally, and mark the packet submitted manually.
+
+Confirm the packet persists after refresh, copyable drafts appear, truthfulness status appears, verified Profile Facts are used, needs-review facts are ignored, CISSP/Security+/clearance remain blocked, manual status transitions persist, export Markdown and DOCX locally, and confirm no email/upload/submit/apply action happened.
 
 ## Safety rules
 
@@ -140,6 +151,7 @@ LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser aut
 - `docs/PHASE-09-RESUME-FACTORY-V2.md`
 - `docs/PHASE-09-DOCUMENT-EXPORT-V1.md`
 - `docs/PHASE-10-PERSISTED-JOB-DISCOVERY-V1.md`
+- `docs/PHASE-11-APPLICATION-PACKETS-V1.md`
 - `docs/DOCUMENT-EXPORT.md`
 - `docs/RESUME-FACTORY-DEMO.md`
 - `docs/ADR/0003-command-bus-orchestrator.md`
