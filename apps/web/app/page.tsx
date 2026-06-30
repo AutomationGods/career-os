@@ -1,4 +1,5 @@
 import { domainRegistry } from "@career-os/domains";
+import DataTouchpointsPanel from "./data-touchpoints-panel";
 
 function toWorkspaceSlug(label: string) {
   return label
@@ -87,6 +88,8 @@ export default function Page() {
         <p className="muted">
           Event-driven dashboard shell with human approval gates; no auto-submit and no LinkedIn scraping.
         </p>
+
+        <DataTouchpointsPanel />
 
         <section id="todays-mission" className="section">
           <h2>Today’s Mission</h2>
