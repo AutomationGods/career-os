@@ -8,10 +8,21 @@ export default function PacketDetailPage({ params }: { params: { id: string } })
   if (!packet) {
     return (
       <main className="main">
+        <span className="badge">Application Packet Manager</span>
         <h1>Packet Detail</h1>
-        <div className="card">
-          <strong>{params.id}</strong>
-          <p className="muted">Packet not found in the local data store. Seed demo data from the dashboard, then open a packet link.</p>
+        <div className="grid">
+          <div className="card">
+            <strong>{params.id}</strong>
+            <p className="muted">Packet not found in the local data store.</p>
+          </div>
+          <a className="card linked-card" href="/application-packets">
+            <strong>Open Application Packets</strong>
+            <p className="muted">Select an available packet or create one from local data.</p>
+          </a>
+          <a className="card linked-card" href="/#data-touchpoints">
+            <strong>Seed Local Data</strong>
+            <p className="muted">Create a job, packet, relationship, resume draft, events, state, and snapshots.</p>
+          </a>
         </div>
       </main>
     );
@@ -40,7 +51,7 @@ export default function PacketDetailPage({ params }: { params: { id: string } })
       </div>
 
       <section className="section">
-        <h2>Generated Placeholders</h2>
+        <h2>Generated Drafts</h2>
         <div className="grid">
           <div className="card"><strong>Resume</strong><p className="muted">{packet.resumePlaceholder ?? "Not generated yet."}</p></div>
           <div className="card"><strong>Cover Letter</strong><p className="muted">{packet.coverLetterPlaceholder ?? "Not generated yet."}</p></div>

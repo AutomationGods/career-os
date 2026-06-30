@@ -1,7 +1,9 @@
 import {
-  createApplicationPacket,
-  dedupeRelationships,
-  generatePacketPlaceholders,
+  buildApplicationPacket,
+  buildPacketPlaceholders,
+  cacheApplicationPacket,
+  dedupeRelationshipsWithResults,
+  getApplicationPacket,
   getDomain,
   domainRegistry,
   JobIntelligenceManager,
@@ -9,7 +11,10 @@ import {
   ResumeFactoryManager,
   normalizeJob,
   scoreFit,
-  segmentJob
+  segmentJob,
+  type ApplicationPacketRecord,
+  type RelationshipPerson,
+  type UpsertPersonInput
 } from "@career-os/domains";
 import { eventStore, prismaEventStore, type CareerEventInput, type EventStore } from "@career-os/events";
 import type { SnapshotStore } from "@career-os/snapshots";
@@ -30,6 +35,32 @@ export interface OrchestratorContext extends DomainExecutionContext {
   approvals?: ApprovalRequestService;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isApplicationPacketRecord(value: unknown): value is ApplicationPacketRecord {
+  return isRecord(value) && typeof value.id === "string" && typeof value.jobId === "string" && isRecord(value.selectedJob) && isRecord(value.fitScoreSummary);
+}
+
+function isRelationshipPerson(value: unknown): value is RelationshipPerson {
+  return isRecord(value) && typeof value.id === "string" && typeof value.name === "string" && Array.isArray(value.emails) && Array.isArray(value.phones) && Array.isArray(value.roles);
+}
+
+async function loadApplicationPacketFromState(context: OrchestratorContext, packetId: string) {
+  const projection = await context.stateStore.getProjection("application_packet", packetId, "application_packet.current");
+  return isApplicationPacketRecord(projection?.data) ? projection.data : undefined;
+}
+
+async function loadRelationshipPeopleFromState(context: OrchestratorContext) {
+  const projections = await context.stateStore.listByProjectionType("relationship.person");
+  return projections.map((projection) => projection.data).filter(isRelationshipPerson);
+}
+
+function shouldMirrorLocalCache(context: OrchestratorContext) {
+  return context.eventStore === eventStore && context.stateStore === stateStore;
+}
+
 class ApplicationPacketCommandManager implements DomainManagerContract {
   readonly domainName = "Application Packet Domain";
   readonly domainSlug = "application-packet";
@@ -47,19 +78,35 @@ class ApplicationPacketCommandManager implements DomainManagerContract {
     return command.type === "application_packets.create" || command.type === "application_packets.generate_placeholders";
   }
 
-  async handle(command: CareerCommand<Record<string, unknown>>, _context: DomainExecutionContext): Promise<CommandResult> {
+  async handle(command: CareerCommand<Record<string, unknown>>, context: DomainExecutionContext): Promise<CommandResult> {
+    const executionContext = context as OrchestratorContext;
     if (command.type === "application_packets.generate_placeholders") {
       const packetId = command.entityId ?? String(command.payload.id ?? "");
       if (!packetId) {
         return { ok: false, status: "rejected", commandId: command.id, error: { code: "PACKET_ID_REQUIRED", message: "Application packet id is required" } };
       }
-      const packet = generatePacketPlaceholders(packetId);
-      return { ok: true, status: "completed", commandId: command.id, data: packet, emittedEvents: ["application_packet.updated"], updatedProjections: ["application_packet.current"] };
+
+      const mirrorLocalCache = shouldMirrorLocalCache(executionContext);
+      const sourcePacket = (await loadApplicationPacketFromState(executionContext, packetId)) ?? (mirrorLocalCache ? getApplicationPacket(packetId) : undefined);
+      if (!sourcePacket) {
+        return { ok: false, status: "rejected", commandId: command.id, error: { code: "PACKET_NOT_FOUND", message: "Application packet not found" } };
+      }
+
+      const packet = buildPacketPlaceholders(packetId, sourcePacket);
+      if (mirrorLocalCache) cacheApplicationPacket(packet);
+      const emittedEvents = ["resume.placeholder_created", "cover_letter.placeholder_created", "recruiter_message.placeholder_created", "application_packet.updated"];
+      let sourceEventId: string | undefined;
+      for (const eventType of emittedEvents) {
+        const event = await executionContext.eventStore.append({ eventType, entityType: "application_packet", entityId: packet.id, domain: this.domainSlug, manager: "Application Packet Manager", userId: command.userId, payload: packet, confidence: 1 });
+        sourceEventId = event.id;
+      }
+      await executionContext.stateStore.upsertProjection({ userId: command.userId, projectionType: "application_packet.current", entityType: "application_packet", entityId: packet.id, sourceEventId, data: packet, updatedAt: new Date(packet.updatedAt) });
+      return { ok: true, status: "completed", commandId: command.id, data: packet, emittedEvents, updatedProjections: ["application_packet.current"] };
     }
 
     const rawJob = (command.payload.selectedJob ?? command.payload.job ?? { title: "Untitled role", company: "Unknown company", source: "command" }) as Record<string, unknown>;
     const selectedJob = normalizeJob(rawJob);
-    const packet = createApplicationPacket({
+    const packet = buildApplicationPacket({
       jobId: String(command.payload.jobId ?? command.entityId ?? `job_${Date.now()}`),
       companyId: command.payload.companyId ? String(command.payload.companyId) : undefined,
       personId: command.payload.personId ? String(command.payload.personId) : undefined,
@@ -69,6 +116,9 @@ class ApplicationPacketCommandManager implements DomainManagerContract {
       fitScoreSummary: (command.payload.fitScoreSummary as { score: number; segment: ReturnType<typeof segmentJob>; highlights?: string[] } | undefined) ?? { score: scoreFit(selectedJob), segment: segmentJob(selectedJob), highlights: [] },
       notes: command.payload.notes as string[] | undefined
     });
+    if (shouldMirrorLocalCache(executionContext)) cacheApplicationPacket(packet);
+    const event = await executionContext.eventStore.append({ eventType: "application_packet.created", entityType: "application_packet", entityId: packet.id, domain: this.domainSlug, manager: "Application Packet Manager", userId: command.userId, payload: packet, confidence: 1 });
+    await executionContext.stateStore.upsertProjection({ userId: command.userId, projectionType: "application_packet.current", entityType: "application_packet", entityId: packet.id, sourceEventId: event.id, data: packet, updatedAt: new Date(packet.updatedAt) });
     return { ok: true, status: "completed", commandId: command.id, data: packet, emittedEvents: ["application_packet.created"], updatedProjections: ["application_packet.current"] };
   }
 }
@@ -90,10 +140,29 @@ class RelationshipCommandManager implements DomainManagerContract {
     return command.type === "relationships.dedupe";
   }
 
-  async handle(command: CareerCommand<{ people?: unknown[] } | unknown[]>, _context: DomainExecutionContext): Promise<CommandResult> {
+  async handle(command: CareerCommand<{ people?: unknown[] } | unknown[]>, context: DomainExecutionContext): Promise<CommandResult> {
+    const executionContext = context as OrchestratorContext;
     const people = Array.isArray(command.payload) ? command.payload : command.payload.people ?? [];
-    const relationships = dedupeRelationships(people as Parameters<typeof dedupeRelationships>[0]);
-    return { ok: true, status: "completed", commandId: command.id, data: { relationships }, emittedEvents: ["relationship.deduplicated"], updatedProjections: ["relationship.person"] };
+    const existingPeople = await loadRelationshipPeopleFromState(executionContext);
+    const results = dedupeRelationshipsWithResults(people as UpsertPersonInput[], existingPeople, shouldMirrorLocalCache(executionContext));
+    const emittedEvents: string[] = [];
+
+    for (const result of results) {
+      const event = await executionContext.eventStore.append({
+        eventType: result.eventType,
+        entityType: "person",
+        entityId: result.person.id,
+        domain: this.domainSlug,
+        manager: "Relationship Intelligence Manager",
+        userId: command.userId,
+        payload: { input: result.input, person: result.person, duplicateId: result.duplicateId },
+        confidence: result.confidence
+      });
+      emittedEvents.push(result.eventType);
+      await executionContext.stateStore.upsertProjection({ userId: command.userId, projectionType: "relationship.person", entityType: "person", entityId: result.person.id, sourceEventId: event.id, data: result.person, updatedAt: new Date() });
+    }
+
+    return { ok: true, status: "completed", commandId: command.id, data: { relationships: results.map((result) => result.person) }, emittedEvents: [...new Set(emittedEvents)], updatedProjections: ["relationship.person"] };
   }
 }
 

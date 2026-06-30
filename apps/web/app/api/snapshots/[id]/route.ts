@@ -1,11 +1,12 @@
 import { prismaSnapshotStore } from "@career-os/snapshots";
-import { errorMessage, fail, ok } from "../../_lib/responses";
+import { fail, ok } from "../../_lib/responses";
+import { localReadStores, readWithLocalFallback, storeReadFailure } from "../../_lib/store-read-runtime";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const snapshot = await prismaSnapshotStore.getSnapshot(params.id);
+    const snapshot = await readWithLocalFallback(request, () => prismaSnapshotStore.getSnapshot(params.id), () => localReadStores.snapshots.getSnapshot(params.id), "Persistent snapshot store is unavailable.");
     return snapshot ? ok(snapshot) : fail("Snapshot not found", "SNAPSHOT_NOT_FOUND", 404);
   } catch (error) {
-    return fail(errorMessage(error), "SNAPSHOT_LOOKUP_FAILED", 500);
+    return storeReadFailure(error, "SNAPSHOT_LOOKUP_FAILED");
   }
 }

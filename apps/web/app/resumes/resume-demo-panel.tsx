@@ -91,7 +91,7 @@ function KeywordAlignment({ alignment }: { alignment: KeywordAlignmentView }) {
   return (
     <div className="grid">
       <ListCard title="Verified matches" items={alignment.verifiedMatches} emptyText="No verified keyword matches yet." />
-      <ListCard title="Partial matches" items={alignment.partialMatches} emptyText="No partial matches in this demo response." />
+      <ListCard title="Related matches" items={alignment.partialMatches} emptyText="No related keyword matches in this demo response." />
       <ListCard title="Missing keywords" items={alignment.missingKeywords} emptyText="No missing keywords found." />
       <ListCard title="Blocked from being claimed" items={alignment.blockedKeywords} emptyText="No blocked terms found." />
     </div>

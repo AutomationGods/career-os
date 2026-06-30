@@ -1,5 +1,6 @@
 import { listApplicationPackets } from "@career-os/domains";
-import { createCommand, createDefaultCommandBus } from "@career-os/orchestration";
+import { createCommand } from "@career-os/orchestration";
+import { executeCommandForReview } from "../_lib/command-runtime";
 import { commandResult } from "../_lib/responses";
 
 export async function GET() {
@@ -16,6 +17,6 @@ export async function POST(request: Request) {
     entityId: body.jobId,
     payload: body
   });
-  const result = await createDefaultCommandBus().execute(command);
+  const { result } = await executeCommandForReview(request, command);
   return commandResult(result, 201, 400);
 }

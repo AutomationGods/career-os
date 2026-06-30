@@ -1,10 +1,12 @@
 import { prismaStateStore } from "@career-os/state";
-import { errorMessage, fail, ok } from "../../../../_lib/responses";
+import { ok } from "../../../../_lib/responses";
+import { localReadStores, readWithLocalFallback, storeReadFailure } from "../../../../_lib/store-read-runtime";
 
-export async function GET(_request: Request, { params }: { params: { entityType: string; entityId: string } }) {
+export async function GET(request: Request, { params }: { params: { entityType: string; entityId: string } }) {
   try {
-    return ok(await prismaStateStore.listByEntity(params.entityType, params.entityId));
+    const projections = await readWithLocalFallback(request, () => prismaStateStore.listByEntity(params.entityType, params.entityId), () => localReadStores.state.listByEntity(params.entityType, params.entityId), "Persistent state store is unavailable.");
+    return ok(projections);
   } catch (error) {
-    return fail(errorMessage(error), "STATE_ENTITY_LOOKUP_FAILED", 500);
+    return storeReadFailure(error, "STATE_ENTITY_LOOKUP_FAILED");
   }
 }

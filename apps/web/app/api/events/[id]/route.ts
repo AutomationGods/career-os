@@ -1,11 +1,12 @@
 import { prismaEventStore } from "@career-os/events";
-import { errorMessage, fail, ok } from "../../_lib/responses";
+import { fail, ok } from "../../_lib/responses";
+import { localReadStores, readWithLocalFallback, storeReadFailure } from "../../_lib/store-read-runtime";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const event = await prismaEventStore.getById(params.id);
+    const event = await readWithLocalFallback(request, () => prismaEventStore.getById(params.id), () => localReadStores.events.getById(params.id), "Persistent event store is unavailable.");
     return event ? ok(event) : fail("Event not found", "EVENT_NOT_FOUND", 404);
   } catch (error) {
-    return fail(errorMessage(error), "EVENT_LOOKUP_FAILED", 500);
+    return storeReadFailure(error, "EVENT_LOOKUP_FAILED");
   }
 }

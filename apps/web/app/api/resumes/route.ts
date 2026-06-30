@@ -1,4 +1,5 @@
-import { createCommand, createDefaultCommandBus } from "@career-os/orchestration";
+import { createCommand } from "@career-os/orchestration";
+import { executeCommandForReview } from "../_lib/command-runtime";
 import { commandResult, fail } from "../_lib/responses";
 import { resumeGenerateRequestSchema } from "./schema";
 
@@ -18,6 +19,6 @@ export async function POST(request: Request) {
     payload: body
   });
 
-  const result = await createDefaultCommandBus().execute(command);
+  const { result } = await executeCommandForReview(request, command);
   return commandResult(result, 201, 400);
 }

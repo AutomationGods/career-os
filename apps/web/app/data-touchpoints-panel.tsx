@@ -80,6 +80,11 @@ async function readJson<T>(response: Response): Promise<T | undefined> {
   }
 }
 
+function displayName(value: string) {
+  const cleaned = value.replace(/placeholder/gi, "draft").replace(/[._-]+/g, " ").trim();
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : value;
+}
+
 function EmptyState() {
   return <p className="muted">No local data touchpoints yet. Seed the demo to create a job pipeline, packet, relationship, resume draft, events, state, and snapshots.</p>;
 }
@@ -164,28 +169,28 @@ export default function DataTouchpointsPanel() {
             </div>
           ) : null}
 
-          <div className="grid">
-            <div className="card data-card">
+          <div className="grid touchpoint-grid">
+            <div className="card data-card touchpoint-card">
               <strong>Recent events</strong>
               {data.recentEvents.length > 0 ? (
-                <ul className="compact-list">
-                  {data.recentEvents.slice(0, 5).map((event) => <li key={event.id}>{event.eventType} · {event.entityType}:{event.entityId}</li>)}
+                <ul className="compact-list touchpoint-list">
+                  {data.recentEvents.slice(0, 5).map((event) => <li className="touchpoint-item" key={event.id}>{displayName(event.eventType)} · {displayName(event.entityType)}:{event.entityId}</li>)}
                 </ul>
               ) : <EmptyState />}
             </div>
-            <div className="card data-card">
+            <div className="card data-card touchpoint-card">
               <strong>State projections</strong>
               {data.stateProjections.length > 0 ? (
-                <ul className="compact-list">
-                  {data.stateProjections.slice(0, 5).map((projection) => <li key={projection.id}>{projection.projectionType} · {projection.entityType}:{projection.entityId}</li>)}
+                <ul className="compact-list touchpoint-list">
+                  {data.stateProjections.slice(0, 5).map((projection) => <li className="touchpoint-item" key={projection.id}>{displayName(projection.projectionType)} · {displayName(projection.entityType)}:{projection.entityId}</li>)}
                 </ul>
               ) : <EmptyState />}
             </div>
-            <div className="card data-card">
+            <div className="card data-card touchpoint-card">
               <strong>Snapshots</strong>
               {data.snapshots.length > 0 ? (
-                <ul className="compact-list">
-                  {data.snapshots.slice(0, 5).map((snapshot) => <li key={snapshot.id}>{snapshot.snapshotType} · {snapshot.entityType}:{snapshot.entityId}</li>)}
+                <ul className="compact-list touchpoint-list">
+                  {data.snapshots.slice(0, 5).map((snapshot) => <li className="touchpoint-item" key={snapshot.id}>{displayName(snapshot.snapshotType)} · {displayName(snapshot.entityType)}:{snapshot.entityId}</li>)}
                 </ul>
               ) : <EmptyState />}
             </div>

@@ -39,4 +39,35 @@ describe("resume route schema", () => {
     expect(body.error.code).toBe("INVALID_RESUME_REQUEST");
     expect(body.error.message).toBe("Invalid resume generation request.");
   });
+
+  it("generates the local Splunk/Cribl demo resume without requiring Prisma", async () => {
+    const response = await POST(new Request("http://localhost/api/resumes", {
+      method: "POST",
+      body: JSON.stringify({
+        jobId: "job-demo-splunk-cribl",
+        companyId: "company-demo-commercial",
+        applicationPacketId: "packet-demo-splunk-cribl",
+        resumeVersionId: "resume-version-demo-splunk-cribl",
+        targetRole: "Splunk / Cribl Platform Engineer",
+        companyName: "Demo Commercial Company",
+        jobDescription: "Splunk Cribl Terraform AWS Azure GCP observability role. CISSP and Security+ preferred. No clearance required.",
+        verifiedFacts: [
+          "Built Splunk SIEM dashboards and saved searches for security monitoring.",
+          "Implemented Cribl pipelines for routing, filtering, and normalizing observability data.",
+          "Performed log onboarding for Linux, AWS, Azure, and GCP sources into security data pipelines.",
+          "Managed Terraform modules for cloud observability infrastructure."
+        ],
+        targetKeywords: ["Splunk", "Cribl", "SIEM", "Terraform", "AWS", "Azure", "GCP", "CISSP", "Security+", "clearance"]
+      })
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.ok).toBe(true);
+    expect(body.data.status).toBe("completed");
+    expect(Boolean(body.data.result.draft.id)).toBe(true);
+    expect(body.data.result.guard.ok).toBe(true);
+    expect(body.data.result.reviewRequired).toBe(true);
+    expect(body.data.result.draft.resumeVersionId).toBe("resume-version-demo-splunk-cribl");
+  });
 });

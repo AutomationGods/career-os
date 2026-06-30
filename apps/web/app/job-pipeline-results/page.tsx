@@ -1,4 +1,6 @@
+import { listApplicationPackets } from "@career-os/domains";
 import { stateStore } from "@career-os/state";
+import ApplicationPacketAction from "./application-packet-action";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +18,17 @@ function numberText(value: unknown) {
   return typeof value === "number" ? String(value) : "n/a";
 }
 
+function numberValue(value: unknown, fallback = 0) {
+  return typeof value === "number" ? value : fallback;
+}
+
+function optionalText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 export default async function JobPipelineResultsPage() {
   const projections = await Promise.resolve(stateStore.listByProjectionType("job.dashboard_segment"));
+  const packetByJobId = new Map(listApplicationPackets().map((packet) => [packet.jobId, packet.id]));
 
   return (
     <main className="main">
@@ -30,15 +41,44 @@ export default async function JobPipelineResultsPage() {
           {projections.map((projection) => {
             const data = isRecord(projection.data) ? projection.data : {};
             const job = isRecord(data.normalizedJob) ? data.normalizedJob : {};
+            const jobId = text(data.jobId, projection.entityId);
+            const dashboardSegment = text(data.dashboardSegment);
+            const remoteClassification = text(data.remoteClassification);
+            const applicationDifficulty = numberText(data.applicationDifficultyScore);
+            const selectedJob = {
+              title: text(job.title, projection.entityId),
+              company: text(job.company),
+              location: optionalText(job.location),
+              description: optionalText(job.description),
+              url: optionalText(job.url),
+              employmentType: optionalText(job.employmentType),
+              source: text(job.source, "job-pipeline-results")
+            };
+            const existingPacketId = packetByJobId.get(jobId);
             return (
               <div className="card" key={projection.id}>
-                <strong>{text(job.title, projection.entityId)}</strong>
-                <p className="muted">{text(job.company)} · {text(job.location)}</p>
-                <p>Dashboard segment: {text(data.dashboardSegment)}</p>
-                <p>Remote classification: {text(data.remoteClassification)}</p>
+                <strong>{selectedJob.title}</strong>
+                <p className="muted">{selectedJob.company} · {selectedJob.location ?? "n/a"}</p>
+                <p>Dashboard segment: {dashboardSegment}</p>
+                <p>Remote classification: {remoteClassification}</p>
                 <p>Fit score: {numberText(data.fitScore)}</p>
-                <p>Application difficulty: {numberText(data.applicationDifficultyScore)}</p>
+                <p>Application difficulty: {applicationDifficulty}</p>
                 <p className="muted">Updated: {projection.updatedAt.toISOString()}</p>
+                <ApplicationPacketAction
+                  existingPacketHref={existingPacketId ? `/application-packets/${existingPacketId}` : undefined}
+                  fitScoreSummary={{
+                    score: numberValue(data.fitScore),
+                    segment: dashboardSegment,
+                    highlights: [
+                      `Dashboard segment: ${dashboardSegment}`,
+                      `Remote classification: ${remoteClassification}`,
+                      `Application difficulty: ${applicationDifficulty}`
+                    ]
+                  }}
+                  jobId={jobId}
+                  selectedCompany={{ name: selectedJob.company }}
+                  selectedJob={selectedJob}
+                />
               </div>
             );
           })}

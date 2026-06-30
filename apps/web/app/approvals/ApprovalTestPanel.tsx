@@ -188,9 +188,9 @@ export default function ApprovalTestPanel({ initialApprovals }: ApprovalTestPane
       <CountCards counts={counts} />
 
       <section className="section">
-        <h2>Approval Test Panel</h2>
-        <p className="muted">Rendering audit: this workspace is mixed. The page fetches initial data on the server, then this client panel uses the approval and dev command API routes for all interactions.</p>
-        <p className="muted">These local commands only exercise permission policy. They do not send email, submit applications, upload files, or use browser automation.</p>
+        <h2>Approval Manager Console</h2>
+        <p className="muted">This workspace loads current requests on the server and routes every decision through the approval API.</p>
+        <p className="muted">Local policy commands demonstrate allowed, approval-gated, and denied outcomes without sending email, submitting applications, uploading files, or using browser automation.</p>
         <div className="card" aria-live="polite">
           <strong>Panel status: {statusLabel(loadingAction)}</strong>
           <p className="muted">Success: {successMessage}</p>
@@ -198,19 +198,19 @@ export default function ApprovalTestPanel({ initialApprovals }: ApprovalTestPane
         </div>
         <div className="grid">
           <div className="card">
-            <strong>Allowed test</strong>
+            <strong>Allowed command</strong>
             <p className="muted">Runs safe `jobs.run_pipeline` demo data.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("allowed")}>Run Allowed Test Command</button>
+            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("allowed")}>Run Allowed Command</button>
           </div>
           <div className="card">
-            <strong>Requires approval test</strong>
+            <strong>Approval-gated command</strong>
             <p className="muted">Posts `email.send` demo data to create a pending approval without sending email.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("requires-approval")}>Run Requires Approval Test Command</button>
+            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("requires-approval")}>Run Approval-Gated Command</button>
           </div>
           <div className="card">
-            <strong>Denied test</strong>
+            <strong>Denied command</strong>
             <p className="muted">Posts `application.auto_submit` demo data that policy rejects.</p>
-            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("denied")}>Run Denied Test Command</button>
+            <button type="button" disabled={isLoading} onClick={() => void runDevCommand("denied")}>Run Denied Command</button>
           </div>
         </div>
       </section>

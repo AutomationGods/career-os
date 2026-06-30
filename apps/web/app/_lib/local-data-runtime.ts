@@ -1,9 +1,10 @@
 import { listApplicationPackets, listRelationshipPeople } from "@career-os/domains";
 import { eventStore } from "@career-os/events";
-import { createCommand, createInMemoryCommandBus } from "@career-os/orchestration";
+import { createCommand } from "@career-os/orchestration";
 import { snapshotStore } from "@career-os/snapshots";
 import type { CommandResult } from "@career-os/shared";
 import { stateStore } from "@career-os/state";
+import { createLocalReviewCommandBus } from "../api/_lib/command-runtime";
 
 const demoUserId = "user-demo-local";
 const demoJobId = "job-demo-splunk-cribl";
@@ -131,7 +132,7 @@ export async function getLocalDataTouchpoints(limit = 20) {
 }
 
 export async function seedLocalDataTouchpoints() {
-  const bus = createInMemoryCommandBus();
+  const bus = createLocalReviewCommandBus();
   const steps: CommandStepSummary[] = [];
 
   async function run(name: string, command: ReturnType<typeof createCommand>) {
@@ -215,7 +216,7 @@ export async function seedLocalDataTouchpoints() {
 
   if (packetId) {
     await run(
-      "Generate packet placeholders",
+      "Generate packet drafts",
       createCommand({
         type: "application_packets.generate_placeholders",
         requestedBy: "api",

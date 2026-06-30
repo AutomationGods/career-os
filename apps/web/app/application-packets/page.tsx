@@ -11,7 +11,7 @@ export default function ApplicationPacketsPage() {
     <main className="main">
       <span className="badge">Data-backed</span>
       <h1>Application Packets</h1>
-      <p className="muted">Packets connect jobs, companies, recruiters, fit summaries, placeholders, notes, status, and next action.</p>
+      <p className="muted">Packets connect jobs, companies, recruiters, fit summaries, generated drafts, notes, status, and next action.</p>
 
       <section className="section">
         <h2>Status Overview</h2>
