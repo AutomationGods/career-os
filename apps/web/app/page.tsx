@@ -31,15 +31,13 @@ interface WorkspaceManagerView {
 }
 
 const missionCards = [
-  "top remote commercial jobs",
-  "hybrid commercial jobs",
-  "onsite commercial jobs",
-  "clearance/government separated jobs",
-  "low-fit jobs",
+  "scored jobs ready to inspect",
   "jobs ready for packet generation",
   "packets awaiting review",
+  "packets ready to apply manually",
   "follow-ups due",
-  "estimated apply time"
+  "local exports recorded",
+  "external sends/submits blocked"
 ];
 
 const jobSections = [
@@ -53,13 +51,10 @@ const jobSections = [
 ];
 
 const appSections = [
-  "Ready to Apply",
+  "Ready to Generate",
   "Awaiting Review",
-  "Submitted",
+  "Ready to Apply Manually",
   "Follow-Up Due",
-  "Interviewing",
-  "Rejected",
-  "Offer Received",
   "Closed"
 ];
 
@@ -68,6 +63,7 @@ const localDemoRoutesEnabled = process.env.CAREER_OS_ENABLE_LOCAL_DEMO_ROUTES ==
 
 function buildWorkspaceNavigation(packetDetailHref: string, relationshipDetailHref: string): WorkspaceNavigationItem[] {
   return [
+    { label: "Find Jobs", href: "/job-discovery" },
     { label: "Today’s Mission", href: "#todays-mission" },
     { label: "Jobs", href: "#jobs" },
     { label: "Companies", href: "#companies" },
@@ -75,7 +71,7 @@ function buildWorkspaceNavigation(packetDetailHref: string, relationshipDetailHr
     { label: "Recruiters / Relationships", href: "/relationships" },
     { label: "Email Center", href: "#email-center" },
     { label: "Calendar / Interviews", href: "#calendar-interviews" },
-    { label: "Resume Factory", href: "/resumes" },
+    { label: "Resume Factory Demo", href: "/resumes" },
     { label: "Documents", href: "#documents" },
     { label: "Follow-Ups", href: "#follow-ups" },
     { label: "Market Intelligence", href: "#market-intelligence" },
@@ -109,9 +105,9 @@ function buildWorkspaceManagerViews(packetCount: number, relationshipCount: numb
       id: "email-center",
       title: "Email Center",
       manager: "Communications Manager",
-      description: "Email actions route through approval gates and demo replay; external sending stays blocked until approved.",
+      description: "Gmail read-only sync is future work; email sending and recruiter outreach remain disabled until explicit approval-gated integrations exist.",
       metrics: [
-        { label: "approval-gated sends", value: "on" },
+        { label: "gmail read-only sync", value: "future" },
         { label: "external sends", value: "blocked" }
       ],
       actions: [{ label: "Open approval requests", href: "/approvals" }]
@@ -131,21 +127,21 @@ function buildWorkspaceManagerViews(packetCount: number, relationshipCount: numb
       id: "documents",
       title: "Documents",
       manager: "Document Intelligence Manager",
-      description: "Document workspaces connect resume drafts, packet drafts, source snapshots, and review-only exports.",
+      description: "Document workspaces connect resume drafts, packet drafts, source snapshots, and local markdown exports.",
       metrics: [
         { label: "application packets", value: packetCount },
         { label: "snapshots", value: snapshotCount }
       ],
-      actions: [{ label: "Open Resume Factory", href: "/resumes" }]
+      actions: [{ label: "Open current packet", href: "/application-packets" }]
     },
     {
       id: "follow-ups",
       title: "Follow-Ups",
       manager: "Follow-Up Automation Manager",
-      description: "Follow-up queues use relationship records and approval-gated communication actions.",
+      description: "Follow-up queues use relationship records and manual packet status; automatic outreach remains disabled.",
       metrics: [
         { label: "relationships", value: relationshipCount },
-        { label: "scheduled sends", value: "approval-gated" }
+        { label: "scheduled sends", value: "approval-gated future" }
       ],
       actions: [{ label: "Open relationships", href: "/relationships" }]
     },
@@ -169,13 +165,13 @@ function buildWorkspaceManagerViews(packetCount: number, relationshipCount: numb
         { label: "resume guard", value: "implemented" },
         { label: "fit segments", value: jobSections.length }
       ],
-      actions: [{ label: "Open Resume Factory", href: "/resumes" }]
+      actions: [{ label: "Open Resume Factory demo", href: "/resumes" }]
     },
     {
       id: "settings",
       title: "Settings",
       manager: "Configuration Manager",
-      description: "Settings show the current safety posture: local data, human approvals, and no automatic submission.",
+      description: "Settings show the current safety posture: local data, human approvals, manual application tracking, and no automatic submission.",
       metrics: [
         { label: "human approval gates", value: "on" },
         { label: "automatic submission", value: "off" }
@@ -244,10 +240,10 @@ export default async function Page() {
         </nav>
       </aside>
       <main className="main">
-        <span className="badge">Platform-first foundation</span>
-        <h1>Reusable automation platform running Career OS</h1>
+        <span className="badge">Safe manual application workflow</span>
+        <h1>Find jobs, build packets, export locally, follow up manually</h1>
         <p className="muted">
-          Event-driven dashboard shell with human approval gates; no automatic submission and no LinkedIn scraping.
+          Find Jobs → Score/Review → Create Packet → Generate Grounded Resume → Review/Export Locally → Track Status/Follow-Up. No automatic submission, Gmail sending, recruiter outreach, browser automation, or LinkedIn scraping.
         </p>
 
         <DataTouchpointsPanel enabled={localDemoRoutesEnabled} />
@@ -270,6 +266,10 @@ export default async function Page() {
           <span className="badge">Job Intelligence Manager</span>
           <h2>Jobs</h2>
           <div className="grid">
+            <a className="card linked-card" href="/job-discovery">
+              <strong>Find Jobs</strong>
+              <p className="muted">Search Remotive public listings and import scored opportunities.</p>
+            </a>
             {jobSections.map((section) => (
               <div className="card" key={section}>
                 <strong>{section}</strong>
@@ -278,21 +278,21 @@ export default async function Page() {
             ))}
             <a className="card linked-card" href="/job-pipeline-results">
               <strong>Pipeline Results</strong>
-              <p className="muted">Open data-backed job dashboard projections.</p>
+              <p className="muted">Review source-attributed job dashboard projections and create packets.</p>
             </a>
           </div>
         </section>
 
         <section id="applications" className="section">
-          <span className="badge">Application Manager</span>
-          <h2>Applications</h2>
+          <span className="badge">Application Packet Manager</span>
+          <h2>Packets + Resume</h2>
           <div className="grid">
             {appSections.map((section) => (
               <div className="card" key={section}><strong>{section}</strong></div>
             ))}
             <a className="card linked-card" href="/application-packets">
               <strong>Application Packets</strong>
-              <p className="muted">Open packet assembly, review status, and next actions.</p>
+              <p className="muted">Open packet assembly, grounded resume generation, local export, review status, and next actions.</p>
             </a>
           </div>
         </section>

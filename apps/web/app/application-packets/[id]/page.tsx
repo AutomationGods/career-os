@@ -1,11 +1,17 @@
 import { requireAuthenticatedCareerUser } from "../../api/_lib/auth";
-import { getPersistentApplicationPacket } from "../../api/_lib/persistent-state";
+import { getPersistentApplicationPacket, listPersistentResumeDraftProjections } from "../../api/_lib/persistent-state";
+import PacketResumeAction from "./packet-resume-action";
+import PacketStatusAction from "./packet-status-action";
 
 export const dynamic = "force-dynamic";
 
 export default async function PacketDetailPage({ params }: { params: { id: string } }) {
   const authUser = await requireAuthenticatedCareerUser();
-  const packet = await getPersistentApplicationPacket(authUser.userId, params.id);
+  const [packet, resumeDrafts] = await Promise.all([
+    getPersistentApplicationPacket(authUser.userId, params.id),
+    listPersistentResumeDraftProjections(authUser.userId)
+  ]);
+  const latestDraft = resumeDrafts.find((draft) => draft.entityId === params.id);
 
   if (!packet) {
     return (
@@ -50,12 +56,19 @@ export default async function PacketDetailPage({ params }: { params: { id: strin
           <strong>Next action</strong>
           <p className="muted">{packet.nextAction}</p>
         </div>
+        <PacketStatusAction packetId={packet.id} status={packet.status} />
       </div>
+
+      <PacketResumeAction packet={packet} />
 
       <section className="section">
         <h2>Generated Drafts</h2>
         <div className="grid">
-          <div className="card"><strong>Resume</strong><p className="muted">{packet.resumePlaceholder ?? "Not generated yet."}</p></div>
+          <div className="card">
+            <strong>Resume</strong>
+            <p className="muted">{packet.resumePlaceholder ?? "Use the packet-specific generator above for a grounded draft."}</p>
+            {latestDraft ? <p><a href={`/api/application-packets/${packet.id}/resume/export`}>Export latest markdown draft locally</a></p> : null}
+          </div>
           <div className="card"><strong>Cover Letter</strong><p className="muted">{packet.coverLetterPlaceholder ?? "Not generated yet."}</p></div>
           <div className="card"><strong>Recruiter Message</strong><p className="muted">{packet.recruiterMessagePlaceholder ?? "Not generated yet."}</p></div>
         </div>

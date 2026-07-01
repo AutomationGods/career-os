@@ -6,6 +6,16 @@ The platform layer provides the System Kernel, Domain Registry, Command Bus, Eve
 
 Career OS runs on that platform as a career-management product for job intelligence, application packets, relationships, documents, interviews, follow-ups, and career growth.
 
+## Working MVP
+
+Open `/job-discovery` and click **Find Jobs** to search selected public job sources, preserve source links, enforce your keyword locally, score jobs through the existing pipeline, and start application packets from `/job-pipeline-results`.
+
+The safe/manual workflow is: **Find Jobs → Score/Review → Create Packet → Generate Grounded Resume → Review/Export Locally → Track Status/Follow-Up**.
+
+Packet detail pages generate truthfulness-guarded resume drafts from supplied verified facts, export local markdown downloads, and move packets through manual review/follow-up statuses.
+
+Gmail read-only sync, Gmail sending, recruiter outreach, browser automation, uploads, auto-apply, LinkedIn scraping, proxy scraping, and CAPTCHA bypassing remain disabled or future approval-gated integrations.
+
 ## Docker Desktop production-style start
 
 ```bash
@@ -93,6 +103,21 @@ The platform is designed so future products such as Sales OS, Grant OS, Real Est
 - `/resumes` provides a local demo workspace with a Splunk / Cribl Platform Engineer payload, markdown preview, truthfulness status, keyword alignment, and safety warnings.
 - CISSP, Security+, clearance, fake employers, and fake metrics remain unclaimed unless they are supplied as verified facts and pass the guard.
 
+## Phase 8 Job Discovery MVP
+
+- `job_discovery.search` routes through the Command Bus and Orchestrator.
+- Remotive, Remote OK, and Arbeitnow public API results are normalized, attributed, keyword-filtered, snapshotted, scored, and segmented.
+- `/job-discovery` runs searches and `/job-pipeline-results` shows source links before packet creation.
+- External sends, uploads, browser actions, and application submission remain disabled.
+
+## Phase 9 Safe Manual Application Workflow
+
+- State projections are user-scoped, so two users can import the same public Remotive job ID without collisions.
+- Packet detail pages generate packet-specific grounded resumes through `resume.generate` using verified facts only.
+- `documents.export` records local markdown export metadata and returns a local `.md` download; it does not upload, submit, send, or contact anyone.
+- `application_packets.update_status` moves packets through manual review, ready-to-apply, follow-up due, and closed states.
+- Fit scoring shows matched keywords, missing keywords, and a scoring reason.
+
 ## Resume Factory local demo
 
 ```bash
@@ -105,12 +130,15 @@ Confirm the preview appears, truthfulness status appears, CISSP/Security+/cleara
 
 ## Safety rules
 
-Career OS requires human approval before sending emails, submitting applications, answering sensitive questions, contacting recruiters for the first time, modifying the master profile, exporting AI-generated documents for real use, or uploading files to unknown sites.
+Career OS requires human approval before sending emails, submitting applications, answering sensitive questions, contacting recruiters for the first time, modifying the master profile, exporting documents for external submission, or uploading files to unknown sites.
 
-LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser automation, and auto-submit are intentionally excluded from the current foundation.
+Local markdown export is allowed because it stays on your machine and records an audit event.
+
+LinkedIn scraping, CAPTCHA bypassing, proxy scraping, email sending, browser automation, recruiter outreach, and auto-submit are intentionally excluded from the current foundation.
 
 ## Governance docs
 
+- `docs/USING-CAREER-OS-TODAY.md`
 - `docs/ARCHITECTURE_BIBLE.md`
 - `docs/CONSTITUTION.md`
 - `docs/DEVELOPER_GUIDE.md`

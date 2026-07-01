@@ -1,1 +1,1 @@
-export const commands = ["document-export.execute"];
+export const commands = ["documents.export"];

@@ -1,1 +1,1 @@
-export const events = ["document-export.completed"];
+export const events = ["document.local_exported"];

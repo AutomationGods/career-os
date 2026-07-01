@@ -173,5 +173,7 @@ export class PrismaEventStore implements EventStore {
   }
 }
 
-export const eventStore = new InMemoryEventStore();
+const globalStores = globalThis as typeof globalThis & { __careerOsEventStore?: InMemoryEventStore };
+
+export const eventStore = (globalStores.__careerOsEventStore ??= new InMemoryEventStore());
 export const prismaEventStore = new PrismaEventStore();

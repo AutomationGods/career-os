@@ -2,7 +2,7 @@ import { eventStore, type EventStore } from "@career-os/events";
 import { snapshotStore, type SnapshotStore } from "@career-os/snapshots";
 import { stateStore, type StateStore } from "@career-os/state";
 import type { JobSegment, NormalizedJob } from "@career-os/shared";
-import { classifyRemote, normalizeJob, scoreFit, segmentClearance, segmentJob } from "./index";
+import { classifyRemote, normalizeJob, scoreFit, segmentClearance, segmentJob, summarizeFitScore, type FitScoreSummary } from "./index";
 
 export interface JobPipelineInput extends Partial<NormalizedJob> {
   id?: string;
@@ -12,6 +12,8 @@ export interface JobPipelineInput extends Partial<NormalizedJob> {
   hasEasyApply?: boolean;
   recruiterEmail?: string;
   userId?: string;
+  profileSkills?: string[];
+  targetKeywords?: string[];
 }
 
 export interface JobPipelineStores {
@@ -27,6 +29,7 @@ export interface JobPipelineResult {
   clearanceSegment: JobSegment | null;
   certificationClassification: { required: string[]; preferred: string[]; blocked: string[] };
   fitScore: number;
+  fitScoreSummary: FitScoreSummary;
   applicationDifficultyScore: number;
   dashboardSegment: JobSegment;
   eventsEmitted: string[];
@@ -75,7 +78,8 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
     const remoteClassification = classifyRemote(normalizedJob);
     const clearanceSegment = segmentClearance(normalizedJob);
     const certificationClassification = classifyCertifications(normalizedJob, input.certifications);
-    const fitScore = scoreFit(normalizedJob);
+    const fitScoreSummary = summarizeFitScore(normalizedJob, { profileSkills: input.profileSkills, targetKeywords: input.targetKeywords });
+    const fitScore = fitScoreSummary.score;
     const applicationDifficultyScore = scoreApplicationDifficulty(input);
     const dashboardSegment = certificationClassification.blocked.length > 0 ? "Low Fit" : segmentJob(normalizedJob);
     const payload = {
@@ -84,6 +88,7 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
       clearanceSegment,
       certificationClassification,
       fitScore,
+      fitScoreSummary,
       applicationDifficultyScore,
       dashboardSegment
     };
@@ -117,7 +122,7 @@ export async function runJobPipeline(input: JobPipelineInput, stores: JobPipelin
       updatedAt: new Date()
     });
 
-    return { jobId, normalizedJob, remoteClassification, clearanceSegment, certificationClassification, fitScore, applicationDifficultyScore, dashboardSegment, eventsEmitted };
+    return { jobId, normalizedJob, remoteClassification, clearanceSegment, certificationClassification, fitScore, fitScoreSummary, applicationDifficultyScore, dashboardSegment, eventsEmitted };
   } catch (error) {
     await events.append({
       eventType: "job.pipeline_failed",

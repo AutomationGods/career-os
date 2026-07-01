@@ -26,6 +26,10 @@ function optionalText(value: unknown) {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
+function stringList(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+}
+
 export default async function JobPipelineResultsPage() {
   const authUser = await requireAuthenticatedCareerUser();
   const [projections, packets] = await Promise.all([
@@ -49,6 +53,10 @@ export default async function JobPipelineResultsPage() {
             const dashboardSegment = text(data.dashboardSegment);
             const remoteClassification = text(data.remoteClassification);
             const applicationDifficulty = numberText(data.applicationDifficultyScore);
+            const fitSummary = isRecord(data.fitScoreSummary) ? data.fitScoreSummary : {};
+            const matchedKeywords = stringList(fitSummary.matchedKeywords);
+            const missingKeywords = stringList(fitSummary.missingKeywords);
+            const scoringReason = text(fitSummary.scoringReason, "Static keyword match score.");
             const selectedJob = {
               title: text(job.title, projection.entityId),
               company: text(job.company),
@@ -58,14 +66,20 @@ export default async function JobPipelineResultsPage() {
               employmentType: optionalText(job.employmentType),
               source: text(job.source, "job-pipeline-results")
             };
+            const sourceLabel = selectedJob.source === "Remotive" ? "Remotive public API" : selectedJob.source;
             const existingPacketId = packetByJobId.get(jobId);
             return (
               <div className="card" key={projection.id}>
                 <strong>{selectedJob.title}</strong>
                 <p className="muted">{selectedJob.company} · {selectedJob.location ?? "n/a"}</p>
+                <p>Source: {sourceLabel}</p>
+                {selectedJob.url ? <p><a href={selectedJob.url} target="_blank" rel="noreferrer">Open original job listing</a></p> : null}
                 <p>Dashboard segment: {dashboardSegment}</p>
                 <p>Remote classification: {remoteClassification}</p>
                 <p>Fit score: {numberText(data.fitScore)}</p>
+                <p className="muted">Reason: {scoringReason}</p>
+                {matchedKeywords.length > 0 ? <p>Matched keywords: {matchedKeywords.slice(0, 10).join(", ")}</p> : null}
+                {missingKeywords.length > 0 ? <p className="muted">Missing keywords: {missingKeywords.slice(0, 10).join(", ")}</p> : null}
                 <p>Application difficulty: {applicationDifficulty}</p>
                 <p className="muted">Updated: {projection.updatedAt.toISOString()}</p>
                 <ApplicationPacketAction
@@ -74,6 +88,8 @@ export default async function JobPipelineResultsPage() {
                     score: numberValue(data.fitScore),
                     segment: dashboardSegment,
                     highlights: [
+                      scoringReason,
+                      `Matched: ${matchedKeywords.slice(0, 6).join(", ") || "none"}`,
                       `Dashboard segment: ${dashboardSegment}`,
                       `Remote classification: ${remoteClassification}`,
                       `Application difficulty: ${applicationDifficulty}`
@@ -89,7 +105,8 @@ export default async function JobPipelineResultsPage() {
         </div>
       ) : (
         <div className="card">
-          <p className="muted">No job pipeline projections yet. Open the dashboard and click “Seed Demo Data Touchpoints” to run the local pipeline.</p>
+          <p className="muted">No job pipeline projections yet. Open Find Jobs to import public Remotive listings.</p>
+          <p><a href="/job-discovery">Find Jobs →</a></p>
         </div>
       )}
     </main>

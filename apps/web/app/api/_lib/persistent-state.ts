@@ -62,8 +62,9 @@ function userScopedOrLocalFallback<T extends { userId?: string | null }>(records
 
 async function listStateProjections(projectionType: string, userId: string) {
   const store = useLocalMemoryRuntime() ? stateStore : prismaStateStore;
-  const projections = await Promise.resolve(store.listByProjectionType(projectionType));
-  return userScopedOrLocalFallback(projections, userId);
+  const projections = await Promise.resolve(store.listByProjectionType(projectionType, { userId }));
+  if (projections.length > 0 || !useLocalMemoryRuntime()) return projections;
+  return userScopedOrLocalFallback(await Promise.resolve(store.listByProjectionType(projectionType)), userId);
 }
 
 export async function listPersistentApplicationPackets(userId: string) {
@@ -108,8 +109,9 @@ export async function listPersistentResumeDraftProjections(userId: string): Prom
 
 export async function listPersistentEntityProjections(userId: string, entityType: string, entityId: string) {
   const store = useLocalMemoryRuntime() ? stateStore : prismaStateStore;
-  const projections = await Promise.resolve(store.listByEntity(entityType, entityId));
-  return userScopedOrLocalFallback(projections, userId);
+  const projections = await Promise.resolve(store.listByEntity(entityType, entityId, { userId }));
+  if (projections.length > 0 || !useLocalMemoryRuntime()) return projections;
+  return userScopedOrLocalFallback(await Promise.resolve(store.listByEntity(entityType, entityId)), userId);
 }
 
 export async function listPersistentEntityEvents(userId: string, entityType: string, entityId: string): Promise<CareerEventRecord[]> {

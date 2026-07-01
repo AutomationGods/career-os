@@ -236,5 +236,7 @@ export class PrismaSnapshotStore implements SnapshotStore {
   }
 }
 
-export const snapshotStore = new InMemorySnapshotStore();
+const globalStores = globalThis as typeof globalThis & { __careerOsSnapshotStore?: InMemorySnapshotStore };
+
+export const snapshotStore = (globalStores.__careerOsSnapshotStore ??= new InMemorySnapshotStore());
 export const prismaSnapshotStore = new PrismaSnapshotStore();

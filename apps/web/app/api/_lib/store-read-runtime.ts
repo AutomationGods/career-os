@@ -21,7 +21,13 @@ export function isPersistentStoreUnavailable(error: unknown) {
   return message.includes("can't reach database server") || message.includes("database server") || message.includes("p1001") || message.includes("connection refused") || message.includes("localhost:55434");
 }
 
+export function shouldUseLocalMemoryStoreReads() {
+  return process.env.CAREER_OS_COMMAND_RUNTIME === "local-memory";
+}
+
 export async function readWithLocalFallback<T>(request: Request, durableRead: () => T | Promise<T>, localRead: () => T | Promise<T>, unavailableMessage: string) {
+  if (shouldUseLocalMemoryStoreReads()) return await localRead();
+
   try {
     return await durableRead();
   } catch (error) {

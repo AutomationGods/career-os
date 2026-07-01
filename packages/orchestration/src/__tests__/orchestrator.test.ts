@@ -18,6 +18,12 @@ function createTestPlatform() {
 }
 
 describe("Orchestrator", () => {
+  it("registers the public job discovery search command", () => {
+    const { orchestrator } = createTestPlatform();
+
+    expect(orchestrator.listCommandTypes().includes("job_discovery.search")).toBe(true);
+  });
+
   it("routes a command to the correct domain manager and emits lifecycle events", async () => {
     const { eventStore, orchestrator } = createTestPlatform();
     const command = createCommand({ type: "daily_mission.generate", requestedBy: "system", entityType: "daily_mission", entityId: "today", payload: {} });
@@ -143,6 +149,41 @@ describe("Orchestrator", () => {
     expect(emittedTypes.includes("command.received")).toBe(true);
     expect(emittedTypes.includes("command.accepted")).toBe(true);
     expect(emittedTypes.includes("command.completed")).toBe(true);
+  });
+
+  it("executes application_packets.update_status through command bus", async () => {
+    const { bus, eventStore, stateStore } = createTestPlatform();
+    const createResult = await bus.execute(createCommand({
+      type: "application_packets.create",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "job",
+      entityId: "job-packet-status-1",
+      payload: {
+        jobId: "job-packet-status-1",
+        selectedJob: { title: "Splunk Engineer", company: "ExampleCo", source: "test" },
+        selectedCompany: { name: "ExampleCo" },
+        fitScoreSummary: { score: 80, segment: "Remote Commercial", highlights: ["Splunk"] }
+      }
+    }));
+    const packet = createResult.data as { id: string };
+
+    const result = await bus.execute(createCommand({
+      type: "application_packets.update_status",
+      requestedBy: "api",
+      userId: "user-1",
+      entityType: "application_packet",
+      entityId: packet.id,
+      payload: { id: packet.id, status: "awaiting_review", note: "Ready for review." }
+    }));
+    const updated = stateStore.getProjection("application_packet", packet.id, "application_packet.current", { userId: "user-1" })?.data as { status: string; notes: string[] };
+    const emittedTypes = eventStore.listByEntity("application_packet", packet.id).map((event) => event.eventType);
+
+    expect(result.ok).toBe(true);
+    expect(updated.status).toBe("awaiting_review");
+    expect(updated.notes.includes("Ready for review.")).toBe(true);
+    expect(emittedTypes.includes("application_packet.status_updated")).toBe(true);
+    expect(emittedTypes.includes("application.submitted")).toBe(false);
   });
 
   it("executes jobs.run_pipeline through command bus and updates stores without forbidden actions", async () => {

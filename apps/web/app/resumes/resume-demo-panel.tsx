@@ -51,7 +51,7 @@ function SafetyWarning() {
 }
 
 function LatestResult({ result, latestPayload }: { result?: ResumeResultView; latestPayload?: ResumeDemoPayload }) {
-  if (!result) return <p className="muted">No resume generated yet. Run the demo generator to call POST /api/resumes.</p>;
+  if (!result) return <p className="muted">No demo resume generated yet. For real workflows, open an application packet and generate from packet detail.</p>;
 
   return (
     <div className="grid">
@@ -177,7 +177,7 @@ export default function ResumeDemoPanel() {
   const [latestPayload, setLatestPayload] = useState<ResumeDemoPayload | undefined>(undefined);
   const [result, setResult] = useState<ResumeResultView | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Ready to generate a local review draft.");
+  const [statusMessage, setStatusMessage] = useState("Ready to generate a demo-only local review draft.");
 
   const alignment = useMemo(() => buildKeywordAlignment(latestPayload ?? buildResumeDemoPayload(fields), result), [fields, latestPayload, result]);
 
@@ -220,7 +220,8 @@ export default function ResumeDemoPanel() {
       <SafetyWarning />
 
       <section className="section">
-        <h2>Demo Generator</h2>
+        <h2>Secondary Demo Generator</h2>
+        <p className="muted">Real resume generation now starts from Application Packets so job, company, packet, and export context stay linked.</p>
         <div className="card form-card">
           <label>
             Target role
