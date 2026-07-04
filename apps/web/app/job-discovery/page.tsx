@@ -32,16 +32,17 @@ export default async function JobDiscoveryPage() {
 
   return (
     <main className="main">
-      <span className="badge">Job Discovery Manager</span>
+      <span className="badge">Public job search</span>
       <h1>Find Jobs</h1>
+
       <p className="muted hero-copy">
-        Search selected public worldwide job sources, enforce your keyword locally, normalize matches into the job pipeline, and create packets from scored matches.
+        Search selected public worldwide job sources, keep only relevant matches, and create application drafts from scored jobs.
       </p>
 
       <JobDiscoveryPanel />
 
       <section className="section">
-        <h2>Current scored jobs</h2>
+        <h2>Current job matches</h2>
         {latestJobs.length > 0 ? (
           <div className="grid">
             {latestJobs.map((job) => (
@@ -53,8 +54,8 @@ export default async function JobDiscoveryPage() {
               </div>
             ))}
             <a className="card linked-card primary-action-card" href="/job-pipeline-results">
-              <strong>Open all pipeline results</strong>
-              <p className="muted">Review every discovered job and start an application packet.</p>
+              <strong>Open all job matches</strong>
+              <p className="muted">Review every discovered job and start an application draft.</p>
             </a>
           </div>
         ) : (

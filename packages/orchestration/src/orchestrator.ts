@@ -7,11 +7,16 @@ import {
   getApplicationPacket,
   getDomain,
   domainRegistry,
+  runtimeDescriptors,
   JobDiscoveryManager,
   JobIntelligenceManager,
   CommunicationsManager,
   DocumentExportManager,
   ResumeFactoryManager,
+  ProfileFactsManager,
+  SourceDocumentsManager,
+  CareerProfileManager,
+  CareerOpportunitiesManager,
   normalizeJob,
   scoreFit,
   segmentJob,
@@ -30,6 +35,7 @@ import type { ApprovalRequestService } from "./approvals";
 import { InMemoryApprovalRequestService, PrismaApprovalRequestService } from "./approvals";
 import { CommandBus } from "./command-bus";
 import { getPolicyCommandTypes, PermissionPolicyService } from "./permissions";
+import { RuntimeAuditManager, type RuntimeManagerSummary } from "./runtime-audit";
 
 export interface OrchestratorContext extends DomainExecutionContext {
   eventStore: EventStore;
@@ -37,6 +43,7 @@ export interface OrchestratorContext extends DomainExecutionContext {
   snapshotStore: SnapshotStore;
   permissions?: PermissionService;
   approvals?: ApprovalRequestService;
+  dispatchCommand?: (command: CareerCommand) => Promise<CommandResult>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -210,25 +217,56 @@ class DailyMissionCommandManager implements DomainManagerContract {
 
   async handle(command: CareerCommand, context: DomainExecutionContext): Promise<CommandResult> {
     const executionContext = context as OrchestratorContext;
+    const userScope = command.userId ? { userId: command.userId } : undefined;
+    const careerProfileProjection = await executionContext.stateStore.getProjection("career_profile", command.userId ?? "default", "career_profile.current", userScope);
+    const opportunityProjection = await executionContext.stateStore.getProjection("career_opportunities", command.userId ?? "default", "career_opportunities.current_pipeline", userScope);
+    const packetProjections = await executionContext.stateStore.listByProjectionType("application_packet.current", userScope);
+    const resumeProjections = await executionContext.stateStore.listByProjectionType("resume.current_draft", userScope);
+    const profileFactProjections = await executionContext.stateStore.listByProjectionType("profile_facts.current", userScope);
+    const relationshipProjections = await executionContext.stateStore.listByProjectionType("relationship.person", userScope);
+
+    const profile = isRecord(careerProfileProjection?.data) ? careerProfileProjection.data : {};
+    const opportunities = isRecord(opportunityProjection?.data) && Array.isArray(opportunityProjection.data.opportunities) ? opportunityProjection.data.opportunities.filter(isRecord) : [];
+    const packets = packetProjections.map((projection) => projection.data).filter(isRecord);
+    const resumes = resumeProjections.map((projection) => projection.data).filter(isRecord);
+    const facts = profileFactProjections.map((projection) => projection.data).filter(isRecord);
+    const missingEvidence = Array.isArray(profile.missingEvidence) ? profile.missingEvidence.filter((item): item is string => typeof item === "string") : facts.filter((fact) => fact.truthStatus === "needs_evidence").map((fact) => String(fact.claim ?? "Evidence needed"));
+    const rankedJobs = opportunities.sort((a, b) => Number(b.missionPriority ?? b.fitScore ?? 0) - Number(a.missionPriority ?? a.fitScore ?? 0));
+    const blockedApplyStatuses = new Set(["packet_created", "not_fit", "rejected", "archived", "dismissed"]);
+    const jobsToApplyToday = rankedJobs.filter((job) => !blockedApplyStatuses.has(String(job.status)) && job.fitGatePassed !== false && Number(job.fitScore ?? 0) > 0).slice(0, 5);
+    const packetsToFinish = packets.filter((packet) => ["ready_to_generate", "awaiting_review", "generated"].includes(String(packet.status))).slice(0, 5);
+    const followupsDue = relationshipProjections.map((projection) => projection.data).filter(isRecord).filter((person) => Boolean(person.followupDue || person.nextFollowupAt)).slice(0, 5);
+    const mission = {
+      id: command.entityId ?? "today",
+      generatedAt: new Date().toISOString(),
+      topJobsToApplyToday: jobsToApplyToday,
+      packetsToFinish,
+      resumeVariantsToGenerate: Array.isArray(profile.suggestedResumeVariants) ? profile.suggestedResumeVariants.slice(0, 5) : [],
+      resumesGenerated: resumes.length,
+      missingEvidenceToGather: missingEvidence.slice(0, 10),
+      followupsDue,
+      highestLeverageNextAction: packetsToFinish.length > 0
+        ? "Finish the top packet, review the grounded resume, then apply manually outside Career OS."
+        : jobsToApplyToday.length > 0
+          ? "Create a packet for the highest-fit job and apply manually today."
+          : opportunities.length > 0
+            ? "No strong-fit jobs found from the current source. Try another clean target title or add more job sources."
+            : missingEvidence.length > 0
+              ? "Gather the first missing evidence item so more facts can become resume-safe."
+              : "Paste a resume, build a career profile, then discover jobs.",
+      safety: ["No auto-apply.", "No email sent.", "No browser automation.", "No LinkedIn scraping."]
+    };
+    const event = await executionContext.eventStore.append({ eventType: "daily_mission.generated", entityType: "daily_mission", entityId: mission.id, domain: this.domainSlug, manager: "Mission Manager", capability: "DailyMissionGenerationCapability", worker: "DailyMissionWorker", userId: command.userId, payload: mission, confidence: 1 });
     const projection = await executionContext.stateStore.upsertProjection({
       userId: command.userId,
       projectionType: "daily_mission.current_queue",
       entityType: "daily_mission",
-      entityId: command.entityId ?? "today",
-      data: {
-        topRemoteCommercialJobs: [],
-        hybridCommercialJobs: [],
-        onsiteCommercialJobs: [],
-        clearanceGovernmentSeparatedJobs: [],
-        lowFitJobs: [],
-        jobsReadyForPacketGeneration: [],
-        packetsAwaitingReview: [],
-        followupsDuePlaceholder: [],
-        estimatedApplyTimePlaceholder: "TBD after application difficulty scoring"
-      },
+      entityId: mission.id,
+      sourceEventId: event.id,
+      data: mission,
       updatedAt: new Date()
     });
-    return { ok: true, status: "completed", commandId: command.id, data: projection, emittedEvents: ["daily_mission.generated"], updatedProjections: ["daily_mission.current_queue"] };
+    return { ok: true, status: "completed", commandId: command.id, data: projection.data, emittedEvents: ["daily_mission.generated"], updatedProjections: ["daily_mission.current_queue"] };
   }
 }
 
@@ -247,6 +285,23 @@ export class Orchestrator {
 
   listCommandTypes() {
     return [...this.managers.keys()].sort();
+  }
+
+  listRuntimeManagers(): RuntimeManagerSummary[] {
+    const managersByDomain = new Map<string, RuntimeManagerSummary>();
+    for (const [commandType, manager] of this.managers.entries()) {
+      const existing = managersByDomain.get(manager.domainSlug) ?? {
+        domainSlug: manager.domainSlug,
+        domainName: manager.domainName,
+        managerName: domainRegistry.find((domain) => domain.slug === manager.domainSlug)?.manager ?? manager.domainName,
+        commandTypes: []
+      };
+      existing.commandTypes.push(commandType);
+      managersByDomain.set(manager.domainSlug, existing);
+    }
+    return [...managersByDomain.values()]
+      .map((manager) => ({ ...manager, commandTypes: [...new Set(manager.commandTypes)].sort() }))
+      .sort((a, b) => a.domainSlug.localeCompare(b.domainSlug));
   }
 
   canHandle(commandType: string) {
@@ -376,6 +431,10 @@ function getDomainByCommand(commandType: string) {
 
 export function createOrchestrator(context: OrchestratorContext) {
   const orchestrator = new Orchestrator(context);
+  context.dispatchCommand = (command) => orchestrator.execute(command);
+  orchestrator.registerManager(new SourceDocumentsManager());
+  orchestrator.registerManager(new CareerProfileManager());
+  orchestrator.registerManager(new CareerOpportunitiesManager());
   orchestrator.registerManager(new JobDiscoveryManager());
   orchestrator.registerManager(new JobIntelligenceManager());
   orchestrator.registerManager(new ApplicationPacketCommandManager());
@@ -383,7 +442,14 @@ export function createOrchestrator(context: OrchestratorContext) {
   orchestrator.registerManager(new DailyMissionCommandManager());
   orchestrator.registerManager(new ResumeFactoryManager());
   orchestrator.registerManager(new DocumentExportManager());
+  orchestrator.registerManager(new ProfileFactsManager());
   orchestrator.registerManager(new CommunicationsManager());
+  orchestrator.registerManager(new RuntimeAuditManager({
+    domains: domainRegistry,
+    descriptors: runtimeDescriptors,
+    getRuntimeWiredCommands: () => orchestrator.listCommandTypes(),
+    getRuntimeWiredManagers: () => orchestrator.listRuntimeManagers()
+  }));
   return orchestrator;
 }
 

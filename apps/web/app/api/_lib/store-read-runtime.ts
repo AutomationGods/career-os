@@ -18,7 +18,7 @@ export function isLocalReadRequest(request: Request) {
 
 export function isPersistentStoreUnavailable(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return message.includes("can't reach database server") || message.includes("database server") || message.includes("p1001") || message.includes("connection refused") || message.includes("localhost:55434");
+  return message.includes("can't reach database server") || message.includes("database server") || message.includes("p1001") || message.includes("connection refused") || message.includes("localhost:55434") || message.includes("too many database connections") || message.includes("too many clients already");
 }
 
 export function shouldUseLocalMemoryStoreReads() {

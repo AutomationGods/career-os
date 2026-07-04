@@ -3,7 +3,13 @@ import { listPersistentApplicationPackets } from "../api/_lib/persistent-state";
 
 export const dynamic = "force-dynamic";
 
-const sections = ["ready_to_generate", "awaiting_review", "ready_to_apply", "followup_due", "closed"];
+const sections = [
+  { status: "ready_to_generate", label: "Ready to draft" },
+  { status: "awaiting_review", label: "Needs review" },
+  { status: "ready_to_apply", label: "Ready to apply" },
+  { status: "followup_due", label: "Follow-up due" },
+  { status: "closed", label: "Closed" }
+];
 
 export default async function ApplicationPacketsPage() {
   const authUser = await requireAuthenticatedCareerUser();
@@ -11,20 +17,21 @@ export default async function ApplicationPacketsPage() {
 
   return (
     <main className="main">
-      <span className="badge">Data-backed</span>
-      <h1>Application Packets</h1>
-      <p className="muted">Packets connect jobs, companies, recruiters, fit summaries, generated drafts, notes, status, and next action.</p>
+      <span className="badge">Saved applications</span>
+      <h1>Applications</h1>
+      <p className="muted">Review application drafts, resume drafts, notes, status, and next actions.</p>
 
       <section className="section">
         <h2>Status Overview</h2>
         <div className="grid">
           {sections.map((section) => (
-            <div className="card" key={section}>
-              <strong>{packets.filter((packet) => packet.status === section).length}</strong>
+            <div className="card" key={section.status}>
+              <strong>{packets.filter((packet) => packet.status === section.status).length}</strong>
               <br />
-              <span className="muted">{section}</span>
+              <span className="muted">{section.label}</span>
             </div>
           ))}
+
         </div>
       </section>
 
@@ -43,7 +50,8 @@ export default async function ApplicationPacketsPage() {
           </div>
         ) : (
           <div className="card">
-            <p className="muted">No packets yet. Open the dashboard and click “Seed Demo Data Touchpoints” to create one.</p>
+            <p className="muted">No applications yet. Open Command Center, find a job match, then create an application draft.</p>
+            <p><a href="/career-command">Open Command Center →</a></p>
           </div>
         )}
       </section>

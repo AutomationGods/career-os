@@ -48,6 +48,16 @@ export const developmentAllowedPermissions = new Set<PermissionName>([
 ]);
 
 export const protectedCommandPermissions: Record<string, PermissionName> = {
+  "source_documents.import": "export_document",
+  "source_documents.list": "export_document",
+  "source_documents.extract_claims": "export_document",
+  "profile_facts.create_from_claims": "export_document",
+  "career_profile.generate": "export_document",
+  "career_profile.get": "export_document",
+  "career_opportunities.find_jobs": "read_jobs",
+  "career_opportunities.create_from_job_input": "write_jobs",
+  "career_opportunities.rank": "read_jobs",
+  "career_opportunities.create_packet": "generate_resume",
   "job_discovery.search": "read_jobs",
   "jobs.run_pipeline": "write_jobs",
   "daily_mission.generate": "read_jobs",

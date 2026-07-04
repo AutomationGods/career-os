@@ -103,6 +103,31 @@ export interface CapabilityDefinition {
   permissions: string[];
 }
 
+export interface DomainRuntimeTestsDescriptor {
+  unit: boolean;
+  integration: boolean;
+  e2e: boolean;
+}
+
+export interface DomainRuntimeDescriptor {
+  domainId: string;
+  displayName: string;
+  managerId: string;
+  commands: string[];
+  capabilities: string[];
+  workers: string[];
+  tools: string[];
+  eventsProduced: string[];
+  stateProjections: string[];
+  stateProjectionDependencies?: string[];
+  dependencies?: string[];
+  approvalRequired: boolean;
+  gated: boolean;
+  disabled: boolean;
+  uiVisible: boolean;
+  tests: DomainRuntimeTestsDescriptor;
+}
+
 export interface Logger {
   info?(message: string, metadata?: Record<string, unknown>): void;
   warn?(message: string, metadata?: Record<string, unknown>): void;

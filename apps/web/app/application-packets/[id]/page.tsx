@@ -16,20 +16,20 @@ export default async function PacketDetailPage({ params }: { params: { id: strin
   if (!packet) {
     return (
       <main className="main">
-        <span className="badge">Application Packet Manager</span>
-        <h1>Packet Detail</h1>
+        <span className="badge">Application draft</span>
+        <h1>Application Detail</h1>
         <div className="grid">
           <div className="card">
             <strong>{params.id}</strong>
-            <p className="muted">Packet not found in the local data store.</p>
+            <p className="muted">Application draft not found.</p>
           </div>
           <a className="card linked-card" href="/application-packets">
-            <strong>Open Application Packets</strong>
-            <p className="muted">Select an available packet or create one from local data.</p>
+            <strong>Open Applications</strong>
+            <p className="muted">Select an available application draft.</p>
           </a>
-          <a className="card linked-card" href="/#data-touchpoints">
-            <strong>Seed Local Data</strong>
-            <p className="muted">Create a job, packet, relationship, resume draft, events, state, and snapshots.</p>
+          <a className="card linked-card" href="/career-command">
+            <strong>Open Command Center</strong>
+            <p className="muted">Find a job match and create an application draft.</p>
           </a>
         </div>
       </main>
@@ -38,8 +38,8 @@ export default async function PacketDetailPage({ params }: { params: { id: strin
 
   return (
     <main className="main">
-      <span className="badge">Data-backed</span>
-      <h1>Packet Detail</h1>
+      <span className="badge">Saved application</span>
+      <h1>Application Detail</h1>
       <div className="grid">
         <div className="card">
           <strong>{packet.selectedJob.title}</strong>
@@ -62,12 +62,12 @@ export default async function PacketDetailPage({ params }: { params: { id: strin
       <PacketResumeAction packet={packet} />
 
       <section className="section">
-        <h2>Generated Drafts</h2>
+        <h2>Drafts</h2>
         <div className="grid">
           <div className="card">
             <strong>Resume</strong>
             <p className="muted">{packet.resumePlaceholder ?? "Use the packet-specific generator above for a grounded draft."}</p>
-            {latestDraft ? <p><a href={`/api/application-packets/${packet.id}/resume/export`}>Export latest markdown draft locally</a></p> : null}
+            {latestDraft ? <p><a href={`/api/application-packets/${packet.id}/resume/export`}>Export Resume Draft</a></p> : null}
           </div>
           <div className="card"><strong>Cover Letter</strong><p className="muted">{packet.coverLetterPlaceholder ?? "Not generated yet."}</p></div>
           <div className="card"><strong>Recruiter Message</strong><p className="muted">{packet.recruiterMessagePlaceholder ?? "Not generated yet."}</p></div>

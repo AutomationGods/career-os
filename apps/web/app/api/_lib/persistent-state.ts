@@ -1,5 +1,5 @@
 import { prisma } from "@career-os/db";
-import { listApplicationPackets, listRelationshipPeople, type ApplicationPacketRecord, type RelationshipPerson } from "@career-os/domains";
+import { listApplicationPackets, listRelationshipPeople, type ApplicationPacketRecord, type ProfileFact, type RelationshipPerson } from "@career-os/domains";
 import { eventStore, prismaEventStore, type CareerEventRecord } from "@career-os/events";
 import { snapshotStore } from "@career-os/snapshots";
 import { prismaStateStore, stateStore, type StateProjectionRecord } from "@career-os/state";
@@ -44,6 +44,19 @@ function isRelationshipPerson(value: unknown): value is RelationshipPerson {
     isStringArray(value.emails) &&
     isStringArray(value.phones) &&
     isStringArray(value.roles)
+  );
+}
+
+function isProfileFact(value: unknown): value is ProfileFact {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.userId === "string" &&
+    typeof value.category === "string" &&
+    typeof value.claim === "string" &&
+    typeof value.truthStatus === "string" &&
+    isStringArray(value.allowedUses) &&
+    isStringArray(value.blockedUses)
   );
 }
 
@@ -107,6 +120,11 @@ export async function listPersistentResumeDraftProjections(userId: string): Prom
   });
 }
 
+export async function listPersistentProfileFacts(userId: string): Promise<ProfileFact[]> {
+  const projections = await listStateProjections("profile_facts.current", userId);
+  return projections.map((projection) => projection.data).filter(isProfileFact);
+}
+
 export async function listPersistentEntityProjections(userId: string, entityType: string, entityId: string) {
   const store = useLocalMemoryRuntime() ? stateStore : prismaStateStore;
   const projections = await Promise.resolve(store.listByEntity(entityType, entityId, { userId }));
@@ -118,6 +136,13 @@ export async function listPersistentEntityEvents(userId: string, entityType: str
   const store = useLocalMemoryRuntime() ? eventStore : prismaEventStore;
   const events = await Promise.resolve(store.listByEntity(entityType, entityId));
   return userScopedOrLocalFallback(events, userId);
+}
+
+export async function listPersistentRuntimeProjectionTypes(userId: string) {
+  const store = useLocalMemoryRuntime() ? stateStore : prismaStateStore;
+  const projections = await Promise.resolve(store.listRecent(1000, { userId }));
+  if (projections.length > 0 || !useLocalMemoryRuntime()) return [...new Set(projections.map((projection) => projection.projectionType))].sort();
+  return [...new Set((await Promise.resolve(store.listRecent(1000))).map((projection) => projection.projectionType))].sort();
 }
 
 export async function getPersistentRuntimeCounts(userId: string): Promise<PersistentRuntimeCounts> {

@@ -38,4 +38,10 @@ export function loadRootEnvFile(startDirectory = process.cwd()) {
 
 loadRootEnvFile();
 
-export const prisma = new PrismaClient();
+type PrismaGlobal = typeof globalThis & { __careerOsPrisma?: PrismaClient };
+
+const prismaGlobal = globalThis as PrismaGlobal;
+
+export const prisma = prismaGlobal.__careerOsPrisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") prismaGlobal.__careerOsPrisma = prisma;

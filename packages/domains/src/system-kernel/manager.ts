@@ -4,15 +4,15 @@ export const definition: DomainDefinition = {
   name: "System Kernel Domain",
   slug: "system-kernel",
   manager: "System Kernel Manager",
-  capabilities: ["Placeholder Capability"],
-  workers: ["Placeholder Worker"],
-  tools: ["Placeholder Tool"],
-  commands: ["system-kernel.execute"],
-  events: ["system-kernel.completed"],
+  capabilities: ["RuntimeAuditCapability"],
+  workers: ["RuntimeAuditWorker"],
+  tools: ["RuntimeManifestInspectorTool"],
+  commands: ["system.runtime_audit"],
+  events: ["runtime.audit_started", "runtime.audit_completed", "runtime.audit_failed"],
   permissions: [],
-  dependencies: [],
-  status: "placeholder",
-  version: "0.1.0"
+  dependencies: ["domain-registry", "event-store", "state-store"],
+  status: "partial",
+  version: "0.2.0"
 };
 
 export class SystemKernelManager { readonly definition = definition; }

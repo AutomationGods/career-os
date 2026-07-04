@@ -11,6 +11,7 @@ export interface TruthfulnessGuardResult {
   ok: boolean;
   blockedClaims: string[];
   groundedClaims: string[];
+  placeholderClaims: string[];
   warnings: string[];
 }
 
@@ -35,22 +36,39 @@ function extractDraftClaims(draft: ResumeDraftLike) {
   return draft.sections.flatMap((section) => section.bullets);
 }
 
+function isPlaceholderClaim(claim: string) {
+  return /^\[Add [^\]]+\]$/.test(claim.trim());
+}
+
 export function assessResumeTruthfulness(input: TruthfulnessGuardInput): TruthfulnessGuardResult {
   const factSet = new Set(input.verifiedFacts.map(normalizeClaim).filter(Boolean));
   const claims = extractDraftClaims(input.draft);
-  const blockedClaims = claims.filter((claim) => !factSet.has(normalizeClaim(claim)));
-  const groundedClaims = claims.filter((claim) => factSet.has(normalizeClaim(claim)));
+  const placeholderClaims = claims.filter(isPlaceholderClaim);
+  const resumeClaims = claims.filter((claim) => !isPlaceholderClaim(claim));
+  const blockedClaims = resumeClaims.filter((claim) => !factSet.has(normalizeClaim(claim)));
+  const groundedClaims = resumeClaims.filter((claim) => factSet.has(normalizeClaim(claim)));
   const warnings = [
-    "This guard only accepts draft bullets that exactly match a supplied verified fact.",
+    "This guard only accepts draft bullets that exactly match a resume-allowed profile fact; bracketed scaffold placeholders are not claims.",
     "Human review is required before using the draft externally."
   ];
+
+  if (factSet.size === 0 && resumeClaims.length === 0) {
+    return {
+      ok: true,
+      blockedClaims: [],
+      groundedClaims: [],
+      placeholderClaims,
+      warnings: ["No resume-allowed profile facts were supplied; only a truthful placeholder scaffold was generated.", ...warnings]
+    };
+  }
 
   if (factSet.size === 0) {
     return {
       ok: false,
-      blockedClaims: claims,
+      blockedClaims: resumeClaims,
       groundedClaims: [],
-      warnings: ["No verified facts were supplied; resume generation is blocked.", ...warnings]
+      placeholderClaims,
+      warnings: ["No resume-allowed profile facts were supplied; resume claims are blocked.", ...warnings]
     };
   }
 
@@ -58,6 +76,7 @@ export function assessResumeTruthfulness(input: TruthfulnessGuardInput): Truthfu
     ok: blockedClaims.length === 0,
     blockedClaims,
     groundedClaims,
+    placeholderClaims,
     warnings
   };
 }

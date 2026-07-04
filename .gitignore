@@ -5,8 +5,11 @@ dist
 .env
 .env.local
 coverage
+test-results/
 .gg/screenshots/
 .gg/plans/
+.gg/*.env
+.hermes/
 *.tsbuildinfo
 apps/**/*.js
 packages/**/*.js

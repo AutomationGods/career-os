@@ -58,7 +58,20 @@ describe("resume demo panel model", () => {
             unmatchedFactCount: 0,
             warnings: ["Human review required."]
           },
-          guard: { ok: true, blockedClaims: [], groundedClaims: ["Built Splunk SIEM dashboards."], warnings: [] },
+          guard: { ok: true, blockedClaims: [], groundedClaims: ["Built Splunk SIEM dashboards."], placeholderClaims: ["[Add verified employer]"], warnings: [] },
+          truthfulnessSummary: {
+            generatedFromProfileFacts: true,
+            profileFactsLoaded: 3,
+            usedFactCount: 1,
+            blockedClaimCount: 1,
+            needsEvidenceExclusionCount: 1,
+            missingRequiredFacts: ["verified employer"],
+            notes: ["Resume Factory used profile_facts.current as the source of truth."]
+          },
+          generatedFromProfileFacts: true,
+          usedFactIds: ["fact-used"],
+          blockedFactIds: ["fact-blocked"],
+          needsEvidenceFactIds: ["fact-needs-evidence"],
           warnings: ["Human review required."]
         }
       }
@@ -68,6 +81,15 @@ describe("resume demo panel model", () => {
     expect(result.commandStatus).toBe("completed");
     expect(result.draft?.id).toBe("resume_draft_1");
     expect(result.guard?.ok).toBe(true);
+    expect(result.guard?.placeholderClaims[0]).toBe("[Add verified employer]");
+    expect(result.generatedFromProfileFacts).toBe(true);
+    expect(result.usedFactIds.join("|")).toBe("fact-used");
+    expect(result.blockedFactIds.join("|")).toBe("fact-blocked");
+    expect(result.needsEvidenceFactIds.join("|")).toBe("fact-needs-evidence");
+    expect(result.truthfulnessSummary?.usedFactCount).toBe(1);
+    expect(result.truthfulnessSummary?.blockedClaimCount).toBe(1);
+    expect(result.truthfulnessSummary?.needsEvidenceExclusionCount).toBe(1);
+    expect(result.truthfulnessSummary?.missingRequiredFacts.join("|")).toBe("verified employer");
   });
 
   it("extracts resume API failure envelopes for display", () => {
@@ -80,6 +102,9 @@ describe("resume demo panel model", () => {
     expect(result.commandStatus).toBe("rejected");
     expect(result.errorCode).toBe("INVALID_RESUME_REQUEST");
     expect(result.errorMessage).toBe("Invalid resume generation request.");
+    expect(result.usedFactIds.length).toBe(0);
+    expect(result.blockedFactIds.length).toBe(0);
+    expect(result.needsEvidenceFactIds.length).toBe(0);
   });
 
   it("surfaces truthfulness-blocked claims from failure envelopes", () => {
@@ -96,6 +121,7 @@ describe("resume demo panel model", () => {
 
     expect(result.guard?.ok).toBe(false);
     expect(result.guard?.blockedClaims[0]).toBe("Held active Top Secret clearance.");
+    expect(result.guard?.placeholderClaims.length).toBe(0);
     expect(alignment.blockedKeywords.includes("Blocked claim: Held active Top Secret clearance.")).toBe(true);
   });
 });

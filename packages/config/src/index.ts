@@ -17,7 +17,12 @@ export const aiIntegrationConfig = {
   openai_oauth_client_id_env: "OPENAI_OAUTH_CLIENT_ID",
   openai_oauth_client_secret_env: "OPENAI_OAUTH_CLIENT_SECRET",
   openai_oauth_redirect_uri_env: "OPENAI_OAUTH_REDIRECT_URI",
-  openai_oauth_scopes_env: "OPENAI_OAUTH_SCOPES"
+  openai_oauth_scopes_env: "OPENAI_OAUTH_SCOPES",
+  hermes_agent_enabled_env: "HERMES_AGENT_ENABLED",
+  hermes_agent_api_base_url_env: "HERMES_AGENT_API_BASE_URL",
+  hermes_agent_api_key_env: "HERMES_AGENT_API_KEY",
+  hermes_agent_model_env: "HERMES_AGENT_MODEL",
+  hermes_agent_timeout_ms_env: "HERMES_AGENT_TIMEOUT_MS"
 } as const;
 
 export type TrustedModeConfigKey = keyof typeof trustedModeConfig;

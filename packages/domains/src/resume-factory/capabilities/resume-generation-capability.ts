@@ -8,10 +8,10 @@ export interface ResumeGenerationCapability extends CapabilityDefinition {
 
 export const resumeGenerationCapability: ResumeGenerationCapability = {
   name: "ResumeGenerationCapability",
-  description: "Generates review-required resume drafts by restating user-supplied verified facts only.",
-  workers: ["TechnicalResumeWorker", "TruthfulnessGuardWorker"],
+  description: "Generates review-required resume drafts by restating resume-allowed profile_facts.current claims only.",
+  workers: ["ProfileFactResolver", "ResumeClaimPolicy", "TechnicalResumeWorker", "TruthfulnessGuardWorker"],
   commands: ["resume.generate", "resume.generate_placeholder"],
-  events: ["resume.generated", "resume.placeholder_created"],
+  events: ["resume.profile_facts_loaded", "resume.claims_filtered", "resume.truthfulness_summary_created", "resume.claim_blocked", "resume.generated", "resume.generation_failed", "resume.placeholder_created"],
   permissions: ["generate_resume"],
   requiresHumanReview: true,
   truthfulnessContract: "verified-facts-only"

@@ -76,7 +76,18 @@ export interface TruthfulnessGuardView {
   ok: boolean;
   blockedClaims: string[];
   groundedClaims: string[];
+  placeholderClaims: string[];
   warnings: string[];
+}
+
+export interface TruthfulnessSummaryView {
+  generatedFromProfileFacts: boolean;
+  profileFactsLoaded: number;
+  usedFactCount: number;
+  blockedClaimCount: number;
+  needsEvidenceExclusionCount: number;
+  missingRequiredFacts: string[];
+  notes: string[];
 }
 
 export interface ResumeResultView {
@@ -86,6 +97,11 @@ export interface ResumeResultView {
   reviewRequired: boolean;
   draft?: ResumeDraftView;
   guard?: TruthfulnessGuardView;
+  truthfulnessSummary?: TruthfulnessSummaryView;
+  generatedFromProfileFacts?: boolean;
+  usedFactIds: string[];
+  blockedFactIds: string[];
+  needsEvidenceFactIds: string[];
   warnings: string[];
   errorCode?: string;
   errorMessage?: string;
@@ -188,7 +204,21 @@ function normalizeGuard(value: unknown): TruthfulnessGuardView | undefined {
     ok: asBoolean(value.ok),
     blockedClaims: asStringArray(value.blockedClaims),
     groundedClaims: asStringArray(value.groundedClaims),
+    placeholderClaims: asStringArray(value.placeholderClaims),
     warnings: asStringArray(value.warnings)
+  };
+}
+
+function normalizeTruthfulnessSummary(value: unknown): TruthfulnessSummaryView | undefined {
+  if (!isRecord(value)) return undefined;
+  return {
+    generatedFromProfileFacts: asBoolean(value.generatedFromProfileFacts),
+    profileFactsLoaded: asNumber(value.profileFactsLoaded),
+    usedFactCount: asNumber(value.usedFactCount),
+    blockedClaimCount: asNumber(value.blockedClaimCount),
+    needsEvidenceExclusionCount: asNumber(value.needsEvidenceExclusionCount),
+    missingRequiredFacts: asStringArray(value.missingRequiredFacts),
+    notes: asStringArray(value.notes)
   };
 }
 
@@ -207,7 +237,7 @@ export function buildResumeDemoPayload(fields: Partial<ResumeDemoFields> = {}): 
 }
 
 export function resumeResultFromEnvelope(envelope: unknown): ResumeResultView {
-  if (!isRecord(envelope)) return { reviewRequired: true, warnings: [], errorCode: "INVALID_RESPONSE", errorMessage: "Resume API returned an unexpected response." };
+  if (!isRecord(envelope)) return { reviewRequired: true, usedFactIds: [], blockedFactIds: [], needsEvidenceFactIds: [], warnings: [], errorCode: "INVALID_RESPONSE", errorMessage: "Resume API returned an unexpected response." };
 
   if (envelope.ok === false) {
     const error = isRecord(envelope.error) ? envelope.error : undefined;
@@ -218,7 +248,10 @@ export function resumeResultFromEnvelope(envelope: unknown): ResumeResultView {
       commandId: asOptionalString(command?.id),
       commandStatus: asOptionalString(command?.status),
       reviewRequired: true,
-      guard: blockedClaims.length > 0 ? { ok: false, blockedClaims, groundedClaims: [], warnings: ["Truthfulness guard blocked unsupported resume claims."] } : undefined,
+      guard: blockedClaims.length > 0 ? { ok: false, blockedClaims, groundedClaims: [], placeholderClaims: [], warnings: ["Truthfulness guard blocked unsupported resume claims."] } : undefined,
+      usedFactIds: [],
+      blockedFactIds: [],
+      needsEvidenceFactIds: [],
       warnings: [],
       errorCode: asOptionalString(error?.code) ?? "REQUEST_FAILED",
       errorMessage: asOptionalString(error?.message) ?? "Resume generation failed."
@@ -234,11 +267,16 @@ export function resumeResultFromEnvelope(envelope: unknown): ResumeResultView {
       reviewRequired: asBoolean(result?.reviewRequired, true),
       draft: normalizeDraft(result?.draft),
       guard: normalizeGuard(result?.guard),
+      truthfulnessSummary: normalizeTruthfulnessSummary(result?.truthfulnessSummary),
+      generatedFromProfileFacts: asBoolean(result?.generatedFromProfileFacts),
+      usedFactIds: asStringArray(result?.usedFactIds),
+      blockedFactIds: asStringArray(result?.blockedFactIds),
+      needsEvidenceFactIds: asStringArray(result?.needsEvidenceFactIds),
       warnings: asStringArray(result?.warnings)
     };
   }
 
-  return { reviewRequired: true, warnings: [], errorCode: "INVALID_RESPONSE", errorMessage: "Resume API returned an unexpected response." };
+  return { reviewRequired: true, usedFactIds: [], blockedFactIds: [], needsEvidenceFactIds: [], warnings: [], errorCode: "INVALID_RESPONSE", errorMessage: "Resume API returned an unexpected response." };
 }
 
 export function buildKeywordAlignment(payload: Pick<ResumeDemoPayload, "targetKeywords" | "verifiedFacts">, result?: ResumeResultView): KeywordAlignmentView {

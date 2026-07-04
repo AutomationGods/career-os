@@ -1,4 +1,4 @@
-import { aiModelProviderMappings, openAiOAuthProvider, openRouterProvider, supportsOpenAiOAuth } from "@career-os/ai";
+import { aiModelProviderMappings, hermesAgentProvider, openAiOAuthProvider, openRouterProvider, supportsOpenAiOAuth } from "@career-os/ai";
 import { aiIntegrationConfig } from "@career-os/config";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,21 @@ export async function GET() {
           apiKeyEnv: openRouterProvider.apiKeyEnv,
           configured: Boolean(process.env.OPENROUTER_API_KEY),
           attributionHeaders: openRouterProvider.attributionHeaders
+        },
+        hermes: {
+          id: hermesAgentProvider.id,
+          displayName: hermesAgentProvider.displayName,
+          enabled: process.env.HERMES_AGENT_ENABLED === "true",
+          configured: Boolean(process.env.HERMES_AGENT_API_BASE_URL?.trim() && process.env.HERMES_AGENT_API_KEY?.trim()),
+          apiBaseUrl: process.env.HERMES_AGENT_API_BASE_URL?.trim() || hermesAgentProvider.apiBaseUrl,
+          model: process.env.HERMES_AGENT_MODEL?.trim() || "hermes-agent",
+          env: {
+            enabled: aiIntegrationConfig.hermes_agent_enabled_env,
+            apiBaseUrl: aiIntegrationConfig.hermes_agent_api_base_url_env,
+            apiKey: aiIntegrationConfig.hermes_agent_api_key_env,
+            model: aiIntegrationConfig.hermes_agent_model_env,
+            timeoutMs: aiIntegrationConfig.hermes_agent_timeout_ms_env
+          }
         }
       },
       modelProviderMappings: aiModelProviderMappings,

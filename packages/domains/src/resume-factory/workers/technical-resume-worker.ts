@@ -45,6 +45,7 @@ export interface TechnicalResumeDraftInput {
   companyName?: string;
   jobDescription?: string;
   targetKeywords?: string[];
+  scaffoldPlaceholders?: string[];
 }
 
 export interface TechnicalResumeDraft {
@@ -85,7 +86,7 @@ function factMatchesKeywords(fact: string, keywords: string[]) {
 
 function renderDraftContent(sections: ResumeDraftSection[]) {
   return [
-    "Review required: this draft only restates verified facts supplied by the user.",
+    "Review required: this draft only restates resume-allowed profile_facts.current claims or explicit placeholders.",
     ...sections.flatMap((section) => ["", `## ${section.title}`, ...section.bullets.map((bullet) => `- ${bullet}`)])
   ].join("\n");
 }
@@ -113,8 +114,17 @@ export function buildTechnicalResumeDraft(input: TechnicalResumeDraftInput): Tec
     sections.push({ title: "Most relevant verified facts", bullets: matchedFacts });
   }
 
-  if (unmatchedFacts.length > 0 || sections.length === 0) {
-    sections.push({ title: "Additional verified facts", bullets: unmatchedFacts.length > 0 ? unmatchedFacts : sourceFacts });
+  if (unmatchedFacts.length > 0) {
+    sections.push({ title: "Additional verified facts", bullets: unmatchedFacts });
+  }
+
+  const scaffoldPlaceholders = normalizeVerifiedFacts(input.scaffoldPlaceholders ?? []);
+  if (scaffoldPlaceholders.length > 0) {
+    sections.push({ title: sourceFacts.length > 0 ? "Verification placeholders" : "Profile facts needed", bullets: scaffoldPlaceholders });
+  }
+
+  if (sections.length === 0) {
+    sections.push({ title: "Profile facts needed", bullets: ["[Add verified employer]", "[Add measurable achievement]", "[Add certification only if verified]", "[Add clearance/public trust only if verified]"] });
   }
 
   const draftCore = {
@@ -136,7 +146,7 @@ export function buildTechnicalResumeDraft(input: TechnicalResumeDraftInput): Tec
     content: renderDraftContent(sections),
     warnings: [
       "Human review required before export, upload, send, or submission.",
-      "Draft bullets are copied from verifiedFacts; add no unsupported claims."
+      "Draft bullets are copied from resume-allowed profile facts or explicit placeholders; add no unsupported claims."
     ]
   };
 }

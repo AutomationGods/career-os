@@ -22,6 +22,10 @@ import { definition as snapshot_store } from "./snapshot-store/manager";
 import { definition as document_intelligence } from "./document-intelligence/manager";
 import { definition as identity } from "./identity/manager";
 import { definition as user_crm } from "./user-crm/manager";
+import { definition as profile_facts } from "./profile-facts/manager";
+import { definition as source_documents } from "./source-documents/manager";
+import { definition as career_profile } from "./career-profile/manager";
+import { definition as career_opportunities } from "./career-opportunities/manager";
 import { definition as relationship_intelligence } from "./relationship-intelligence/manager";
 import { definition as company_intelligence } from "./company-intelligence/manager";
 import { definition as market_intelligence } from "./market-intelligence/manager";
@@ -85,6 +89,10 @@ export const domainRegistry: DomainDefinition[] = [
   document_intelligence,
   identity,
   user_crm,
+  profile_facts,
+  source_documents,
+  career_profile,
+  career_opportunities,
   relationship_intelligence,
   company_intelligence,
   market_intelligence,

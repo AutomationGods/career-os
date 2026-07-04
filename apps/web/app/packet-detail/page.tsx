@@ -14,17 +14,17 @@ export default async function PacketDetailManagerPage() {
 
   return (
     <main className="main">
-      <span className="badge">Application Packet Manager</span>
-      <h1>Packet Detail</h1>
-      <p className="muted">Packet detail opens from the packet list once a packet exists.</p>
+      <span className="badge">Application draft</span>
+      <h1>Application Detail</h1>
+      <p className="muted">Application detail opens from the application list once a draft exists.</p>
       <div className="grid">
         <a className="card linked-card" href="/application-packets">
-          <strong>Open Application Packets</strong>
-          <p className="muted">Create or select a packet, then open the detail record.</p>
+          <strong>Open Applications</strong>
+          <p className="muted">Select an application draft, then open the detail record.</p>
         </a>
-        <a className="card linked-card" href="/#data-touchpoints">
-          <strong>Seed Local Data</strong>
-          <p className="muted">Run the local data flow to create a job, packet, relationship, resume draft, events, state, and snapshots.</p>
+        <a className="card linked-card" href="/career-command">
+          <strong>Open Command Center</strong>
+          <p className="muted">Find a job match and create an application draft.</p>
         </a>
       </div>
     </main>

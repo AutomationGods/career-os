@@ -1,4 +1,4 @@
-export type AiProviderId = "openrouter";
+export type AiProviderId = "openrouter" | "hermes";
 
 export type AiModelUseCase =
   | "default"
@@ -9,17 +9,34 @@ export type AiModelUseCase =
   | "job_fit_scoring"
   | "structured_extraction";
 
-export interface AiProviderConfig {
+export interface AiProviderBaseConfig {
   id: AiProviderId;
   displayName: string;
   apiBaseUrl: string;
-  chatCompletionsUrl: string;
   apiKeyEnv: string;
+}
+
+export interface OpenRouterProviderConfig extends AiProviderBaseConfig {
+  id: "openrouter";
+  chatCompletionsUrl: string;
   attributionHeaders: {
     referer: "HTTP-Referer";
     title: "X-OpenRouter-Title";
   };
 }
+
+export interface HermesAgentProviderConfig extends AiProviderBaseConfig {
+  id: "hermes";
+  responsesUrl: string;
+  chatCompletionsUrl: string;
+  capabilitiesUrl: string;
+  healthUrl: string;
+  modelEnv: string;
+  enabledEnv: string;
+  timeoutMsEnv: string;
+}
+
+export type AiProviderConfig = OpenRouterProviderConfig | HermesAgentProviderConfig;
 
 export interface AiModelProviderMapping {
   useCase: AiModelUseCase;
@@ -49,7 +66,38 @@ export interface OpenRouterChatRequest {
   init: RequestInit;
 }
 
-export const openRouterProvider: AiProviderConfig = {
+export interface HermesAgentRequestOptions {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+  sessionKey?: string;
+}
+
+export interface HermesAgentResponseRequest extends HermesAgentRequestOptions {
+  input: string;
+  instructions?: string;
+  conversation?: string;
+  store?: boolean;
+  body?: Record<string, unknown>;
+}
+
+export interface HermesAgentChatMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  name?: string;
+}
+
+export interface HermesAgentChatCompletionsRequestOptions extends HermesAgentRequestOptions {
+  messages: HermesAgentChatMessage[];
+  body?: Record<string, unknown>;
+}
+
+export interface HermesAgentRequest {
+  url: string;
+  init: RequestInit;
+}
+
+export const openRouterProvider: OpenRouterProviderConfig = {
   id: "openrouter",
   displayName: "OpenRouter",
   apiBaseUrl: "https://openrouter.ai/api/v1",
@@ -61,8 +109,23 @@ export const openRouterProvider: AiProviderConfig = {
   }
 };
 
+export const hermesAgentProvider: HermesAgentProviderConfig = {
+  id: "hermes",
+  displayName: "Hermes Agent",
+  apiBaseUrl: "http://127.0.0.1:8642",
+  responsesUrl: "http://127.0.0.1:8642/v1/responses",
+  chatCompletionsUrl: "http://127.0.0.1:8642/v1/chat/completions",
+  capabilitiesUrl: "http://127.0.0.1:8642/v1/capabilities",
+  healthUrl: "http://127.0.0.1:8642/v1/health",
+  apiKeyEnv: "HERMES_AGENT_API_KEY",
+  modelEnv: "HERMES_AGENT_MODEL",
+  enabledEnv: "HERMES_AGENT_ENABLED",
+  timeoutMsEnv: "HERMES_AGENT_TIMEOUT_MS"
+};
+
 export const aiProviders: Record<AiProviderId, AiProviderConfig> = {
-  openrouter: openRouterProvider
+  openrouter: openRouterProvider,
+  hermes: hermesAgentProvider
 };
 
 export const aiModelProviderMappings: Record<AiModelUseCase, AiModelProviderMapping> = {
@@ -140,6 +203,78 @@ export function buildOpenRouterChatCompletionsRequest(options: OpenRouterRequest
       })
     }
   };
+}
+
+export function buildHermesAgentHeaders(options: { apiKey: string; sessionKey?: string }) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${options.apiKey}`,
+    "Content-Type": "application/json"
+  };
+
+  if (options.sessionKey) headers["X-Hermes-Session-Key"] = options.sessionKey;
+
+  return headers;
+}
+
+export function buildHermesAgentResponsesRequest(options: HermesAgentResponseRequest): HermesAgentRequest {
+  const baseUrl = normalizeBaseUrl(options.baseUrl ?? hermesAgentProvider.apiBaseUrl);
+  return {
+    url: `${baseUrl}/v1/responses`,
+    init: {
+      method: "POST",
+      headers: buildHermesAgentHeaders(options),
+      body: JSON.stringify({
+        ...options.body,
+        model: options.model ?? "hermes-agent",
+        input: options.input,
+        instructions: options.instructions,
+        conversation: options.conversation,
+        store: options.store ?? true
+      })
+    }
+  };
+}
+
+export function buildHermesAgentChatCompletionsRequest(options: HermesAgentChatCompletionsRequestOptions): HermesAgentRequest {
+  const baseUrl = normalizeBaseUrl(options.baseUrl ?? hermesAgentProvider.apiBaseUrl);
+  return {
+    url: `${baseUrl}/v1/chat/completions`,
+    init: {
+      method: "POST",
+      headers: buildHermesAgentHeaders(options),
+      body: JSON.stringify({
+        ...options.body,
+        model: options.model ?? "hermes-agent",
+        messages: options.messages
+      })
+    }
+  };
+}
+
+export function buildHermesAgentCapabilitiesRequest(options: HermesAgentRequestOptions): HermesAgentRequest {
+  const baseUrl = normalizeBaseUrl(options.baseUrl ?? hermesAgentProvider.apiBaseUrl);
+  return {
+    url: `${baseUrl}/v1/capabilities`,
+    init: {
+      method: "GET",
+      headers: buildHermesAgentHeaders(options)
+    }
+  };
+}
+
+export function buildHermesAgentHealthRequest(options: HermesAgentRequestOptions): HermesAgentRequest {
+  const baseUrl = normalizeBaseUrl(options.baseUrl ?? hermesAgentProvider.apiBaseUrl);
+  return {
+    url: `${baseUrl}/v1/health`,
+    init: {
+      method: "GET",
+      headers: buildHermesAgentHeaders(options)
+    }
+  };
+}
+
+function normalizeBaseUrl(baseUrl: string) {
+  return baseUrl.replace(/\/+$/, "");
 }
 
 export interface OpenAiOAuthProviderConfig {

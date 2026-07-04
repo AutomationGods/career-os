@@ -1,0 +1,1 @@
+export const events = ["source_document.import_started", "source_document.imported", "source_document.import_failed", "source_document.claim_extraction_started", "source_document.claim_extracted", "source_document.claim_extraction_completed", "source_document.claim_extraction_failed"];

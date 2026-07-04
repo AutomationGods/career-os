@@ -40,9 +40,9 @@ export default async function JobPipelineResultsPage() {
 
   return (
     <main className="main">
-      <span className="badge">Data-backed</span>
-      <h1>Job Pipeline Results</h1>
-      <p className="muted">Pipeline runs write snapshots, events, and the current job dashboard segment projection.</p>
+      <span className="badge">Saved job matches</span>
+      <h1>Job Matches</h1>
+      <p className="muted">Review jobs found from public sources and create application drafts from strong matches.</p>
 
       {projections.length > 0 ? (
         <div className="grid">
@@ -74,13 +74,13 @@ export default async function JobPipelineResultsPage() {
                 <p className="muted">{selectedJob.company} · {selectedJob.location ?? "n/a"}</p>
                 <p>Source: {sourceLabel}</p>
                 {selectedJob.url ? <p><a href={selectedJob.url} target="_blank" rel="noreferrer">Open original job listing</a></p> : null}
-                <p>Dashboard segment: {dashboardSegment}</p>
-                <p>Remote classification: {remoteClassification}</p>
-                <p>Fit score: {numberText(data.fitScore)}</p>
+                <p>Group: {dashboardSegment}</p>
+                <p>Remote: {remoteClassification}</p>
+                <p>Match score: {numberText(data.fitScore)}</p>
                 <p className="muted">Reason: {scoringReason}</p>
                 {matchedKeywords.length > 0 ? <p>Matched keywords: {matchedKeywords.slice(0, 10).join(", ")}</p> : null}
                 {missingKeywords.length > 0 ? <p className="muted">Missing keywords: {missingKeywords.slice(0, 10).join(", ")}</p> : null}
-                <p>Application difficulty: {applicationDifficulty}</p>
+                <p>Effort estimate: {applicationDifficulty}</p>
                 <p className="muted">Updated: {projection.updatedAt.toISOString()}</p>
                 <ApplicationPacketAction
                   existingPacketHref={existingPacketId ? `/application-packets/${existingPacketId}` : undefined}
@@ -90,9 +90,9 @@ export default async function JobPipelineResultsPage() {
                     highlights: [
                       scoringReason,
                       `Matched: ${matchedKeywords.slice(0, 6).join(", ") || "none"}`,
-                      `Dashboard segment: ${dashboardSegment}`,
-                      `Remote classification: ${remoteClassification}`,
-                      `Application difficulty: ${applicationDifficulty}`
+                      `Group: ${dashboardSegment}`,
+                      `Remote: ${remoteClassification}`,
+                      `Effort estimate: ${applicationDifficulty}`
                     ]
                   }}
                   jobId={jobId}
@@ -105,8 +105,9 @@ export default async function JobPipelineResultsPage() {
         </div>
       ) : (
         <div className="card">
-          <p className="muted">No job pipeline projections yet. Open Find Jobs to import public Remotive listings.</p>
-          <p><a href="/job-discovery">Find Jobs →</a></p>
+          <p className="muted">No job matches yet. Open Command Center or Find Jobs to import public listings.</p>
+
+          <p><a href="/career-command">Open Command Center →</a></p>
         </div>
       )}
     </main>

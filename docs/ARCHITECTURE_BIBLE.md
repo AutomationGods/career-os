@@ -8,6 +8,8 @@ The platform is not only a job-search application. It is an automation operating
 
 Build the reusable platform first. Career OS runs on top of it as the first career-management implementation.
 
+For the product origin, operating process, core pipeline, and north-star experience, see `docs/product/README.md`.
+
 The reusable platform owns the kernel, registry, command routing, event history, state projections, snapshots, orchestration, permissions, approvals, and observability.
 
 The Career OS layer owns job search, career intelligence, application packets, relationships, interviews, follow-ups, documents, and career growth workflows.

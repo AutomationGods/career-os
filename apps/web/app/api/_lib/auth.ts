@@ -23,7 +23,7 @@ function isLocalAuthDisabled() {
 }
 
 function shouldSyncLocalAuthUserToPrisma() {
-  return process.env.CAREER_OS_COMMAND_RUNTIME === "prisma" || process.env.NODE_ENV === "production";
+  return process.env.CAREER_OS_COMMAND_RUNTIME !== "local-memory" || process.env.NODE_ENV === "production";
 }
 
 function localAuthUser(): CareerAuthUser {
@@ -70,7 +70,13 @@ export async function ensureCareerUser(user: CareerAuthUser) {
 export async function getAuthenticatedCareerUser() {
   if (isLocalAuthDisabled()) {
     const user = localAuthUser();
-    return shouldSyncLocalAuthUserToPrisma() ? ensureCareerUser(user) : user;
+    if (!shouldSyncLocalAuthUserToPrisma()) return user;
+    try {
+      return await ensureCareerUser(user);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") return user;
+      throw error;
+    }
   }
 
   const { withAuth } = await import("@workos-inc/authkit-nextjs");

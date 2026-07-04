@@ -1,0 +1,168 @@
+# Job Email Search + Smart CRM Intelligence
+
+This document defines the Gmail search buckets and CRM intelligence rules for Career OS job-search email ingestion.
+
+## Safety boundary
+
+- Read-only import first.
+- No email sending, replying, deleting, label changes, auto-applying, or recruiter outreach without explicit approval.
+- Every projection must retain source Gmail message IDs/thread IDs as evidence.
+
+## Search window
+
+Default first import window: `newer_than:6m`.
+
+Use smaller windows (`30d`, `90d`) for daily operations after the baseline import exists.
+
+## Bucketed Gmail queries
+
+### Human recruiter / sourcer outreach
+
+```text
+newer_than:6m (recruiter OR sourcer OR "talent acquisition" OR "contract role" OR "new role" OR opportunity OR "quick call" OR "time to speak" OR "your profile" OR "I came across") -category:promotions -from:jobalerts-noreply@linkedin.com -from:donotreply@jobalert.indeed.com -from:monster@notifications.monster.com -from:jobalerts@alerts.virtualvocations.com -from:donotreply@virginiaworks.gov
+```
+
+### Application confirmations
+
+```text
+newer_than:6m ("thank you for applying" OR "application received" OR "we received your application" OR "your application for" OR "application has been received" OR "thanks for applying") -category:promotions
+```
+
+### Interviews / scheduling / availability
+
+```text
+newer_than:6m (interview OR calendly OR "schedule a call" OR "schedule time" OR "your availability" OR "availability for" OR "time to speak" OR "quick call") -category:promotions -from:newsletter -from:substack.com
+```
+
+### Rejections / status updates
+
+```text
+newer_than:6m (unfortunately OR "not moving forward" OR "other candidates" OR "decided to move forward" OR "after careful consideration" OR "no longer under consideration") -category:promotions
+```
+
+### Target job alerts / lead sources
+
+```text
+newer_than:6m (Splunk OR Cribl OR SIEM OR "Security Engineer" OR Cybersecurity OR SOC OR "Detection Engineer") ("Job Alert" OR jobs OR posted OR apply) -category:promotions
+```
+
+### Sent job-search outreach
+
+```text
+in:sent newer_than:6m (recruiter OR sourcer OR opportunity OR Splunk OR Cribl OR SIEM OR Cybersecurity OR interview OR application)
+```
+
+## Smart CRM rules
+
+### 1. Do not treat every email as a contact
+
+Separate:
+
+- **Person/contact**: individual recruiter, sourcer, hiring manager, or company contact.
+- **Application system**: ATS or automated applicant-status sender.
+- **Job-alert feed**: LinkedIn, Indeed, Monster, Dice, Virtual Vocations, Virginia Workforce, etc.
+- **Noise**: newsletters, promotions, finance, retail, unrelated subscriptions.
+
+### 2. Count touches by contact identity
+
+Primary contact key:
+
+```text
+normalized sender email
+```
+
+Secondary matching keys when email differs:
+
+```text
+normalized person name + normalized company/domain
+phone number, if present
+LinkedIn profile URL, if manually imported later
+```
+
+The CRM should show:
+
+- first seen
+- last seen
+- total inbound touches
+- total outbound/sent touches
+- last subject
+- categories seen: recruiter, application, interview, rejection, follow-up
+- source message IDs/thread IDs
+
+### 3. Count opportunity clusters separately from people
+
+Different recruiters can pitch the same job with different wording. Build a fuzzy opportunity key from:
+
+```text
+normalized role title + normalized company/client + normalized location/remote + target keywords + optional rate/salary
+```
+
+Examples that may be the same opportunity:
+
+- `Splunk Engineer - Remote`
+- `RTR Confirmation for Splunk Engineer`
+- `Application Received - Splunk Engineer`
+- `Splunk Administrator - Hybrid`
+
+Keep clusters reviewable. Do **not** destructively merge; store confidence and evidence.
+
+### 4. Track same-name / similar-opportunity ambiguity
+
+When two emails share title words but differ by company/client/location/rate, mark as:
+
+```text
+possible_duplicate_opportunity
+```
+
+Fields:
+
+- confidence: low / medium / high
+- reason
+- shared tokens
+- conflicting tokens
+- source message IDs
+
+### 5. Signal score
+
+Positive signals:
+
+- target keywords: Splunk, Cribl, SIEM, SOC, cybersecurity, security engineer, detection engineer
+- human sender rather than no-reply
+- reply/request/action language: availability, interview, RTR, rate confirmation, submit, call
+- multiple touches from same contact
+- thread continuity
+
+Negative signals:
+
+- promotions category
+- newsletter sender
+- generic job-alert feed
+- finance/retail/unrelated sender
+- no target keywords
+
+### 6. Notification rules
+
+Notify Greg only for high-signal items:
+
+- interview/scheduling request
+- recruiter asks for availability, RTR, rate, resume, or permission to submit
+- same opportunity appears from multiple recruiters
+- follow-up due from a real person
+- rejection/status update for a tracked application
+
+Do not notify for every job-alert email. Roll job alerts into a digest.
+
+## Baseline outputs generated by Hermes
+
+Current baseline reports live under:
+
+```text
+/Users/greg/Projects/career-os/.hermes/email-intelligence/
+```
+
+Files:
+
+- `job_email_intelligence_6m.json`
+- `job_email_intelligence_6m.md`
+- `job_email_strict_recruiter_signals_6m.json`
+- `job_email_strict_recruiter_signals_6m.md`

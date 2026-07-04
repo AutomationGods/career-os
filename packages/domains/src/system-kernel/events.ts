@@ -1,1 +1,1 @@
-export const events = ["system-kernel.completed"];
+export const events = ["runtime.audit_started", "runtime.audit_completed", "runtime.audit_failed"];

@@ -14,17 +14,17 @@ export default async function RelationshipDetailManagerPage() {
 
   return (
     <main className="main">
-      <span className="badge">Relationship Intelligence Manager</span>
-      <h1>Relationship Detail</h1>
-      <p className="muted">Relationship detail opens from the relationship list once a person record exists.</p>
+      <span className="badge">Contact</span>
+      <h1>Contact Detail</h1>
+      <p className="muted">Contact detail opens from the contact list once a person record exists.</p>
       <div className="grid">
         <a className="card linked-card" href="/relationships">
-          <strong>Open Relationships</strong>
-          <p className="muted">Create or select a relationship, then open the detail record.</p>
+          <strong>Open Contacts</strong>
+          <p className="muted">Select a contact, then open the detail record.</p>
         </a>
-        <a className="card linked-card" href="/#data-touchpoints">
-          <strong>Seed Local Data</strong>
-          <p className="muted">Run the local data flow to create a deduped recruiter record and related audit data.</p>
+        <a className="card linked-card" href="/career-command">
+          <strong>Open Command Center</strong>
+          <p className="muted">Find jobs and create application drafts.</p>
         </a>
       </div>
     </main>

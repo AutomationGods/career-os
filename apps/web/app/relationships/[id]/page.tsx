@@ -14,16 +14,16 @@ export default async function RelationshipDetailPage({ params }: { params: { id:
   if (!person) {
     return (
       <main className="main">
-        <span className="badge">Relationship Intelligence Manager</span>
-        <h1>Relationship Detail</h1>
+        <span className="badge">Contact</span>
+        <h1>Contact Detail</h1>
         <div className="grid">
           <div className="card">
             <strong>{params.id}</strong>
-            <p className="muted">Relationship not found in the local data store.</p>
+            <p className="muted">Contact not found.</p>
           </div>
           <a className="card linked-card" href="/relationships">
-            <strong>Open Relationships</strong>
-            <p className="muted">Select an available relationship or create one from local data.</p>
+            <strong>Open Contacts</strong>
+            <p className="muted">Select an available contact.</p>
           </a>
           <a className="card linked-card" href="/#data-touchpoints">
             <strong>Seed Local Data</strong>
@@ -41,8 +41,8 @@ export default async function RelationshipDetailPage({ params }: { params: { id:
 
   return (
     <main className="main">
-      <span className="badge">Data-backed</span>
-      <h1>Relationship Detail</h1>
+      <span className="badge">Contact</span>
+      <h1>Contact Detail</h1>
       <div className="grid">
         <div className="card">
           <strong>{person.name}</strong>
@@ -71,21 +71,21 @@ export default async function RelationshipDetailPage({ params }: { params: { id:
       </section>
 
       <section className="section">
-        <h2>Recruiter Audit Trail</h2>
+        <h2>Contact History</h2>
         <div className="grid">
           <div className="card">
             <strong>{events.length}</strong>
-            <p className="muted">relationship events</p>
-            {events.length > 0 ? <ul className="compact-list">{events.slice(0, 5).map((event) => <li key={event.id}>{displayName(event.eventType)} · {event.createdAt.toISOString()}</li>)}</ul> : <p className="muted">No relationship events recorded.</p>}
+            <p className="muted">contact updates</p>
+            {events.length > 0 ? <ul className="compact-list">{events.slice(0, 5).map((event) => <li key={event.id}>{displayName(event.eventType)} · {event.createdAt.toISOString()}</li>)}</ul> : <p className="muted">No contact updates recorded.</p>}
           </div>
           <div className="card">
             <strong>{projections.length}</strong>
-            <p className="muted">state projections</p>
-            {projections.length > 0 ? <ul className="compact-list">{projections.slice(0, 5).map((projection) => <li key={projection.id}>{displayName(projection.projectionType)} · {projection.updatedAt.toISOString()}</li>)}</ul> : <p className="muted">No relationship state projections recorded.</p>}
+            <p className="muted">saved records</p>
+            {projections.length > 0 ? <ul className="compact-list">{projections.slice(0, 5).map((projection) => <li key={projection.id}>{displayName(projection.projectionType)} · {projection.updatedAt.toISOString()}</li>)}</ul> : <p className="muted">No saved contact records found.</p>}
           </div>
-          <a className="card linked-card" href="/resumes">
-            <strong>Open Resume Factory</strong>
-            <p className="muted">Generate the local Splunk/Cribl review draft without emailing, uploading, submitting, or applying.</p>
+          <a className="card linked-card" href="/career-command">
+            <strong>Open Command Center</strong>
+            <p className="muted">Find jobs and create application drafts without emailing, uploading, submitting, or applying.</p>
           </a>
         </div>
       </section>

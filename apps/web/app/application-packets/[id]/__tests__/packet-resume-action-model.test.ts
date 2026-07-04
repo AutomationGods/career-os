@@ -29,14 +29,14 @@ describe("packet resume action model", () => {
     ]));
   });
 
-  it("builds a packet-specific resume payload", () => {
+  it("builds a packet-specific resume payload without injecting manual facts", () => {
     const payload = buildPacketResumePayload(packet, "Built Splunk dashboards\nManaged Terraform modules");
 
     expect(payload.applicationPacketId).toBe("packet-1");
     expect(payload.jobId).toBe("job-1");
     expect(payload.companyName).toBe("ExampleCo");
     expect(payload.targetRole).toBe("Splunk Terraform Engineer");
-    expect(JSON.stringify(payload.verifiedFacts)).toBe(JSON.stringify(["Built Splunk dashboards", "Managed Terraform modules"]));
+    expect(JSON.stringify(payload.verifiedFacts)).toBe(JSON.stringify([]));
     expect(payload.targetKeywords.includes("Splunk Terraform Engineer")).toBe(true);
   });
 });

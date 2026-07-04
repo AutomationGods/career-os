@@ -12,9 +12,9 @@ export default async function RelationshipsPage() {
 
   return (
     <main className="main">
-      <span className="badge">Data-backed</span>
-      <h1>Relationships</h1>
-      <p className="muted">People are deduplicated by email, normalized name + company, and phone number.</p>
+      <span className="badge">Contacts</span>
+      <h1>Contacts</h1>
+      <p className="muted">Track recruiters, hiring managers, interviewers, and referral contacts.</p>
 
       <section className="section">
         <h2>Role Overview</h2>
@@ -44,7 +44,7 @@ export default async function RelationshipsPage() {
           </div>
         ) : (
           <div className="card">
-            <p className="muted">No relationships yet. Open the dashboard and click “Seed Demo Data Touchpoints” to create a deduped recruiter record.</p>
+            <p className="muted">No contacts yet. Contacts will appear here when you add or import recruiter details from applications.</p>
           </div>
         )}
       </section>

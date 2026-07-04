@@ -83,6 +83,22 @@ function LatestResult({ result, latestPayload }: { result?: ResumeResultView; la
         <strong>Source snapshot</strong>
         <p className="muted">{result.sourceSnapshotId ?? "n/a"}</p>
       </div>
+      <div className="card">
+        <strong>Profile Facts consumption</strong>
+        <p className="muted">{result.generatedFromProfileFacts ? "profile_facts.current" : "not reported"}</p>
+      </div>
+      <div className="card">
+        <strong>Used facts</strong>
+        <p className="muted">{result.truthfulnessSummary?.usedFactCount ?? result.usedFactIds.length}</p>
+      </div>
+      <div className="card">
+        <strong>Blocked claims</strong>
+        <p className="muted">{result.truthfulnessSummary?.blockedClaimCount ?? result.blockedFactIds.length}</p>
+      </div>
+      <div className="card">
+        <strong>Needs-evidence excluded</strong>
+        <p className="muted">{result.truthfulnessSummary?.needsEvidenceExclusionCount ?? result.needsEvidenceFactIds.length}</p>
+      </div>
     </div>
   );
 }
@@ -109,6 +125,24 @@ function TruthfulnessGuard({ result }: { result?: ResumeResultView }) {
       <ListCard title="Blocked claims" items={guard?.blockedClaims ?? []} emptyText="No blocked claims reported." />
       <ListCard title="Warnings" items={uniqueStrings([...(result?.warnings ?? []), ...(guard?.warnings ?? [])])} emptyText="No warnings returned yet." />
       <ListCard title="Grounded claims" items={uniqueStrings(guard?.groundedClaims ?? [])} emptyText="No grounded claims returned yet." />
+      <ListCard title="Scaffold placeholders" items={uniqueStrings(guard?.placeholderClaims ?? [])} emptyText="No placeholders returned yet." />
+    </div>
+  );
+}
+
+function TruthfulnessSummary({ result }: { result?: ResumeResultView }) {
+  const summary = result?.truthfulnessSummary;
+  if (!summary) return <p className="muted">Truthfulness summary will appear after generation.</p>;
+
+  return (
+    <div className="grid">
+      <div className="card"><strong>Source of truth</strong><p className="muted">{summary.generatedFromProfileFacts ? "profile_facts.current" : "unknown"}</p></div>
+      <div className="card"><strong>Profile facts loaded</strong><p className="muted">{summary.profileFactsLoaded}</p></div>
+      <div className="card"><strong>Used facts</strong><p className="muted">{summary.usedFactCount}</p></div>
+      <div className="card"><strong>Blocked claims</strong><p className="muted">{summary.blockedClaimCount}</p></div>
+      <div className="card"><strong>Needs-evidence exclusions</strong><p className="muted">{summary.needsEvidenceExclusionCount}</p></div>
+      <ListCard title="Missing required facts" items={summary.missingRequiredFacts} emptyText="No missing required facts reported." />
+      <ListCard title="Truthfulness notes" items={summary.notes} emptyText="No truthfulness notes reported." />
     </div>
   );
 }
@@ -208,7 +242,7 @@ export default function ResumeDemoPanel() {
 
       setStatusMessage("Resume draft generated for local review only. No external action was taken.");
     } catch (error) {
-      setResult({ reviewRequired: true, warnings: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
+      setResult({ reviewRequired: true, usedFactIds: [], blockedFactIds: [], needsEvidenceFactIds: [], warnings: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
       setStatusMessage("Network/runtime error while calling /api/resumes.");
     } finally {
       setIsLoading(false);
@@ -256,6 +290,11 @@ export default function ResumeDemoPanel() {
       <section className="section">
         <h2>Truthfulness Guard</h2>
         <TruthfulnessGuard result={result} />
+      </section>
+
+      <section className="section">
+        <h2>Truthfulness Summary</h2>
+        <TruthfulnessSummary result={result} />
       </section>
 
       <section className="section">

@@ -1,1 +1,1 @@
-export const commands = ["system-kernel.execute"];
+export const commands = ["system.runtime_audit"];
