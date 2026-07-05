@@ -48,6 +48,45 @@ describe("job discovery search route", () => {
     }
   });
 
+  it("normalizes title and keyword strings into capped public searches", async () => {
+    const originalFetch = globalThis.fetch;
+    const requestedUrls: string[] = [];
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      requestedUrls.push(input.toString());
+      return new Response(JSON.stringify({
+        "job-count": 1,
+        jobs: [
+          {
+            id: 123,
+            url: "https://remotive.com/remote-jobs/devops/splunk-engineer-123",
+            title: "Splunk Engineer",
+            company_name: "ExampleCo",
+            job_type: "full_time",
+            candidate_required_location: "Remote",
+            description: "Splunk AWS role"
+          }
+        ]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+
+    try {
+      const response = await POST(new Request("http://localhost/api/job-discovery/search", {
+        method: "POST",
+        body: JSON.stringify({ jobTitles: "Splunk Engineer\nCribl Engineer", keywords: "AWS,SIEM", limit: 10, source: "remotive" })
+      }));
+      const body = await response.json();
+      const searches = requestedUrls.map((url) => new URL(url).searchParams.get("search"));
+
+      expect(response.status).toBe(201);
+      expect(body.ok).toBe(true);
+      expect(searches).toEqual(["Splunk Engineer AWS", "Splunk Engineer SIEM", "Cribl Engineer AWS", "Cribl Engineer SIEM"]);
+      expect(body.data.result.queries).toEqual(searches);
+      expect(body.data.result.imported).toBe(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("uses the selected source and applies keyword filtering", async () => {
     const originalFetch = globalThis.fetch;
     const requestedUrls: string[] = [];

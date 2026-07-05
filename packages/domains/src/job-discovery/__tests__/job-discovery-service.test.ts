@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanRemotiveHtml, clampRemotiveLimit, jobMatchesQuery, mapArbeitnowResponse, mapRemoteOkResponse, mapRemotiveResponse, normalizeRemotiveJob, REMOTIVE_SOURCE } from "../services";
+import { buildJobDiscoveryQueries, cleanRemotiveHtml, clampRemotiveLimit, dedupeDiscoveredJobs, jobMatchesQuery, mapArbeitnowResponse, mapRemoteOkResponse, mapRemotiveResponse, normalizeRemotiveJob, REMOTIVE_SOURCE } from "../services";
 
 const remotiveJob = {
   id: 123,
@@ -66,6 +66,28 @@ describe("Remotive job source", () => {
     expect(splunkJobs[0]?.sourceJobId).toBe("123");
     expect(jobMatchesQuery(splunkJobs[0]!, "aws remote")).toBe(true);
     expect(jobMatchesQuery(splunkJobs[0]!, "golang")).toBe(false);
+  });
+
+  it("builds capped title and keyword query combinations", () => {
+    expect(buildJobDiscoveryQueries({
+      jobTitles: ["Splunk Engineer", "Cribl Engineer"],
+      keywords: ["AWS", "Terraform", "SIEM", "observability"]
+    })).toEqual([
+      "Splunk Engineer AWS",
+      "Splunk Engineer Terraform",
+      "Splunk Engineer SIEM",
+      "Splunk Engineer observability",
+      "Cribl Engineer AWS",
+      "Cribl Engineer Terraform"
+    ]);
+    expect(buildJobDiscoveryQueries({ jobTitles: [], keywords: [], fallbackQuery: "splunk aws" })).toEqual(["splunk aws"]);
+  });
+
+  it("deduplicates discovered jobs by stable job id", () => {
+    const job = normalizeRemotiveJob(remotiveJob)!;
+    const jobs = dedupeDiscoveredJobs([job, { ...job }, { ...job, sourceJobId: "456", jobId: "remotive:456" }]);
+
+    expect(jobs.map((item) => item.jobId)).toEqual(["remotive:123", "remotive:456"]);
   });
 
   it("maps Remote OK and Arbeitnow public API records", () => {

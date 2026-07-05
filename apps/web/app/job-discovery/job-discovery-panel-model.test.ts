@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_JOB_DISCOVERY_QUERY, buildJobDiscoveryPayload, clampJobDiscoveryLimit, jobDiscoveryResultFromEnvelope } from "./job-discovery-panel-model";
+import { DEFAULT_JOB_DISCOVERY_QUERY, buildJobDiscoveryPayload, buildJobDiscoveryQueries, clampJobDiscoveryLimit, jobDiscoveryResultFromEnvelope } from "./job-discovery-panel-model";
 
 describe("job discovery panel model", () => {
   it("builds default multi-source search payloads", () => {
@@ -19,6 +19,32 @@ describe("job discovery panel model", () => {
     expect(clampJobDiscoveryLimit(0)).toBe(1);
   });
 
+  it("builds capped multi-title and keyword payloads", () => {
+    const payload = buildJobDiscoveryPayload({
+      query: "fallback",
+      jobTitles: "Splunk Engineer\nCribl Engineer\nSplunk Engineer",
+      keywords: "AWS, Terraform, SIEM, observability",
+      limit: 10,
+      source: "all"
+    });
+    const queries = buildJobDiscoveryQueries(payload.jobTitles, payload.keywords, payload.query);
+
+    expect(payload.jobTitles).toEqual(["Splunk Engineer", "Cribl Engineer"]);
+    expect(payload.keywords).toEqual(["AWS", "Terraform", "SIEM", "observability"]);
+    expect(queries).toEqual([
+      "Splunk Engineer AWS",
+      "Splunk Engineer Terraform",
+      "Splunk Engineer SIEM",
+      "Splunk Engineer observability",
+      "Cribl Engineer AWS",
+      "Cribl Engineer Terraform"
+    ]);
+  });
+
+  it("falls back to the single query when title and keyword inputs are blank", () => {
+    expect(buildJobDiscoveryQueries("", "", "  splunk aws  ")).toEqual(["splunk aws"]);
+  });
+
   it("parses successful command result envelopes", () => {
     const result = jobDiscoveryResultFromEnvelope({
       ok: true,
@@ -30,6 +56,7 @@ describe("job discovery panel model", () => {
           source: "remotive",
           query: "splunk",
           imported: 1,
+          queries: ["Splunk Engineer AWS", "Cribl Engineer SIEM"],
           jobs: [
             {
               sourceJobId: "123",
@@ -49,6 +76,7 @@ describe("job discovery panel model", () => {
     expect(result.commandId).toBe("command-1");
     expect(result.runId).toBe("run-1");
     expect(result.imported).toBe(1);
+    expect(result.queries).toEqual(["Splunk Engineer AWS", "Cribl Engineer SIEM"]);
     expect(result.jobs[0]?.jobId).toBe("remotive:123");
   });
 

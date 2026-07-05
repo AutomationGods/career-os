@@ -7,6 +7,7 @@ export const REMOTIVE_SOURCE = "Remotive";
 export const REMOTE_OK_SOURCE = "Remote OK";
 export const ARBEITNOW_SOURCE = "Arbeitnow";
 export const DEFAULT_JOB_DISCOVERY_QUERY = "Splunk Cribl SIEM Terraform AWS DevOps remote";
+export const MAX_JOB_DISCOVERY_QUERIES = 6;
 export const DEFAULT_REMOTIVE_LIMIT = 20;
 export const MAX_REMOTIVE_LIMIT = 50;
 export const DEFAULT_REMOTIVE_TIMEOUT_MS = 10_000;
@@ -157,6 +158,31 @@ export function cleanRemotiveHtml(html: unknown) {
 export function queryKeywords(query: string) {
   return [...new Set(query.toLowerCase().match(/[a-z0-9+#.]+/g) ?? [])]
     .filter((keyword) => keyword.length > 2 && !queryStopWords.has(keyword));
+}
+
+function normalizeQueryList(value: unknown) {
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[\n,]+/) : [];
+  return [...new Set(values.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))];
+}
+
+export function buildJobDiscoveryQueries(options: { jobTitles?: unknown; keywords?: unknown; fallbackQuery?: string; maxQueries?: number } = {}) {
+  const titles = normalizeQueryList(options.jobTitles);
+  const keywords = normalizeQueryList(options.keywords);
+  const maxQueries = Math.max(1, Math.trunc(options.maxQueries ?? MAX_JOB_DISCOVERY_QUERIES));
+  const queries = titles.flatMap((title) => keywords.map((keyword) => `${title} ${keyword}`.trim()));
+  const deduped = [...new Set(queries.filter(Boolean))].slice(0, maxQueries);
+  if (deduped.length > 0) return deduped;
+  const fallback = typeof options.fallbackQuery === "string" && options.fallbackQuery.trim() ? options.fallbackQuery.trim() : DEFAULT_JOB_DISCOVERY_QUERY;
+  return [fallback];
+}
+
+export function dedupeDiscoveredJobs(jobs: DiscoveredJob[]) {
+  const seen = new Set<string>();
+  return jobs.filter((job) => {
+    if (seen.has(job.jobId)) return false;
+    seen.add(job.jobId);
+    return true;
+  });
 }
 
 export function jobMatchesQuery(job: DiscoveredJob, query: string) {

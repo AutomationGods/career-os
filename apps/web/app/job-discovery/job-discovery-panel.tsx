@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import {
+  DEFAULT_JOB_DISCOVERY_JOB_TITLES,
+  DEFAULT_JOB_DISCOVERY_KEYWORDS,
   DEFAULT_JOB_DISCOVERY_LIMIT,
   DEFAULT_JOB_DISCOVERY_QUERY,
   buildJobDiscoveryPayload,
@@ -43,6 +45,12 @@ function LatestDiscoveryResult({ result }: { result?: JobDiscoveryResultView }) 
         <strong>Next step</strong>
         <p><a href="/job-pipeline-results">Open scored job results →</a></p>
       </div>
+      {result.queries.length > 0 ? (
+        <div className="card">
+          <strong>Queries used</strong>
+          <p className="muted">{result.queries.join(" · ")}</p>
+        </div>
+      ) : null}
       {result.jobs.slice(0, 6).map((job) => (
         <div className="card" key={job.jobId}>
           <strong>{job.title}</strong>
@@ -56,16 +64,19 @@ function LatestDiscoveryResult({ result }: { result?: JobDiscoveryResultView }) 
 
 export default function JobDiscoveryPanel() {
   const [query, setQuery] = useState(DEFAULT_JOB_DISCOVERY_QUERY);
+  const [jobTitles, setJobTitles] = useState(DEFAULT_JOB_DISCOVERY_JOB_TITLES.join("\n"));
+  const [keywords, setKeywords] = useState(DEFAULT_JOB_DISCOVERY_KEYWORDS.join("\n"));
   const [limit, setLimit] = useState(String(DEFAULT_JOB_DISCOVERY_LIMIT));
   const [source, setSource] = useState<JobDiscoverySource>("all");
   const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Ready to search public worldwide job sources.");
+  const [statusMessage, setStatusMessage] = useState("Ready to search worldwide Splunk, Cribl, and SIEM jobs tonight.");
   const [result, setResult] = useState<JobDiscoveryResultView | undefined>(undefined);
 
   async function runSearch() {
-    const payload = buildJobDiscoveryPayload({ query, limit, source });
+    const payload = buildJobDiscoveryPayload({ query, jobTitles, keywords, limit, source });
     setIsLoading(true);
-    setStatusMessage(`Searching ${payload.source === "all" ? "all public sources" : payload.source} for “${payload.query}”...`);
+    const searchLabel = payload.jobTitles?.length || payload.keywords?.length ? "your title/keyword combinations" : `“${payload.query}”`;
+    setStatusMessage(`Searching ${payload.source === "all" ? "all public sources" : payload.source} worldwide for ${searchLabel}...`);
     setResult(undefined);
 
     try {
@@ -85,7 +96,7 @@ export default function JobDiscoveryPanel() {
 
       setStatusMessage(`Imported ${parsedResult.imported} public jobs. No emails, uploads, submits, or browser actions ran.`);
     } catch (error) {
-      setResult({ imported: 0, jobs: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
+      setResult({ imported: 0, jobs: [], queries: [], errorCode: "NETWORK_ERROR", errorMessage: error instanceof Error ? error.message : "Unknown network error." });
       setStatusMessage("Network/runtime error while calling job discovery.");
     } finally {
       setIsLoading(false);
@@ -104,11 +115,19 @@ export default function JobDiscoveryPanel() {
       </section>
 
       <section className="section">
-        <h2>Find public jobs</h2>
+        <h2>Search worldwide jobs tonight</h2>
         <div className="card form-card">
           <label>
-            Search query
+            Fallback search query
             <input value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+          <label>
+            Job titles
+            <textarea rows={6} value={jobTitles} onChange={(event) => setJobTitles(event.target.value)} />
+          </label>
+          <label>
+            Keywords
+            <textarea rows={6} value={keywords} onChange={(event) => setKeywords(event.target.value)} />
           </label>
           <label>
             Source
@@ -124,7 +143,7 @@ export default function JobDiscoveryPanel() {
             <input type="number" min="1" max="50" value={limit} onChange={(event) => setLimit(event.target.value)} />
           </label>
           <button type="button" disabled={isLoading} onClick={() => void runSearch()}>
-            {isLoading ? "Finding Jobs..." : "Find Jobs"}
+            {isLoading ? "Searching worldwide jobs..." : "Search worldwide jobs tonight"}
           </button>
           <p className="muted" aria-live="polite">{statusMessage}</p>
         </div>

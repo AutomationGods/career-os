@@ -4,7 +4,9 @@ import type { CareerCommand, CommandResult, DomainDefinition, DomainExecutionCon
 import type { StateStore } from "@career-os/state";
 import { runJobPipeline } from "../job-intelligence/pipeline";
 import {
+  buildJobDiscoveryQueries,
   clampRemotiveLimit,
+  dedupeDiscoveredJobs,
   DEFAULT_JOB_DISCOVERY_QUERY,
   RemotiveJobSearchWorker,
   toJobPipelineInput,
@@ -18,6 +20,8 @@ export const JOB_DISCOVERY_SEARCH_COMMAND = "job_discovery.search";
 
 export interface JobDiscoverySearchPayload {
   query?: string;
+  jobTitles?: string[];
+  keywords?: string[];
   limit?: number;
   source?: JobDiscoverySource;
 }
@@ -37,6 +41,7 @@ export interface JobDiscoverySearchResult {
   runId: string;
   source: JobDiscoverySource;
   query: string;
+  queries: string[];
   imported: number;
   jobs: JobDiscoverySearchJobResult[];
 }
@@ -66,7 +71,12 @@ function buildRunId(command: CareerCommand) {
   return command.entityId ?? `job_discovery_run_${Date.now()}`;
 }
 
-function parsePayload(payload: unknown): Required<JobDiscoverySearchPayload> {
+function parseTextList(value: unknown) {
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[\n,]+/) : [];
+  return [...new Set(values.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))];
+}
+
+function parsePayload(payload: unknown): Required<JobDiscoverySearchPayload> & { queries: string[] } {
   const record = Boolean(payload) && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>) : {};
   const source = record.source === undefined ? "all" : record.source;
   if (source !== "all" && source !== "remotive" && source !== "remoteok" && source !== "arbeitnow") {
@@ -74,8 +84,11 @@ function parsePayload(payload: unknown): Required<JobDiscoverySearchPayload> {
   }
 
   const query = typeof record.query === "string" && record.query.trim() ? record.query.trim() : DEFAULT_JOB_DISCOVERY_QUERY;
+  const jobTitles = parseTextList(record.jobTitles);
+  const keywords = parseTextList(record.keywords);
   const limit = clampRemotiveLimit(record.limit);
-  return { query, limit, source };
+  const queries = buildJobDiscoveryQueries({ jobTitles, keywords, fallbackQuery: query });
+  return { query, jobTitles, keywords, limit, source, queries };
 }
 
 function toResultJob(job: DiscoveredJob, pipelineResult: Awaited<ReturnType<typeof runJobPipeline>>): JobDiscoverySearchJobResult {
@@ -140,7 +153,7 @@ export class JobDiscoveryManager implements DomainManagerContract {
         capability: "PublicJobSearchCapability",
         worker: "RemotiveJobSearchWorker",
         userId: command.userId,
-        payload: { commandId: command.id, source: payload.source, query: payload.query, limit: payload.limit },
+        payload: { commandId: command.id, source: payload.source, query: payload.query, queries: payload.queries, jobTitles: payload.jobTitles, keywords: payload.keywords, limit: payload.limit },
         confidence: 1
       });
 
@@ -150,16 +163,19 @@ export class JobDiscoveryManager implements DomainManagerContract {
         entityType: "job_discovery_run",
         entityId: runId,
         sourceEventId: startedEvent.id,
-        data: { runId, source: payload.source, query: payload.query, limit: payload.limit, status: "running", imported: 0 },
+        data: { runId, source: payload.source, query: payload.query, queries: payload.queries, jobTitles: payload.jobTitles, keywords: payload.keywords, limit: payload.limit, status: "running", imported: 0 },
         updatedAt: new Date()
       });
 
-      const searchResult = await this.worker.search({ query: payload.query, limit: payload.limit, source: payload.source });
-      await this.captureSearchSnapshot(executionContext, command, runId, searchResult);
+      const searchResults = await Promise.all(payload.queries.map((query) => this.worker.search({ query, limit: payload.limit, source: payload.source })));
+      for (const searchResult of searchResults) {
+        await this.captureSearchSnapshot(executionContext, command, runId, searchResult);
+      }
 
+      const discoveredJobs = dedupeDiscoveredJobs(searchResults.flatMap((searchResult) => searchResult.jobs)).slice(0, payload.limit);
       const jobs: JobDiscoverySearchJobResult[] = [];
       const emittedEvents = ["job.discovery_started"];
-      for (const job of searchResult.jobs) {
+      for (const job of discoveredJobs) {
         const pipelineResult = await runJobPipeline(toJobPipelineInput(job, command.userId), {
           eventStore: executionContext.eventStore,
           stateStore: executionContext.stateStore,
@@ -172,7 +188,8 @@ export class JobDiscoveryManager implements DomainManagerContract {
       const result: JobDiscoverySearchResult = {
         runId,
         source: payload.source,
-        query: searchResult.query,
+        query: payload.queries[0] ?? payload.query,
+        queries: payload.queries,
         imported: jobs.length,
         jobs
       };
@@ -187,7 +204,7 @@ export class JobDiscoveryManager implements DomainManagerContract {
         worker: "RemotiveJobSearchWorker",
         userId: command.userId,
         payload: { commandId: command.id, ...result },
-        evidence: { source: searchResult.sourceLabel, sourceUrl: searchResult.url, attributionRequired: true, selectedSource: payload.source },
+        evidence: { source: searchResults.map((searchResult) => searchResult.sourceLabel).join(", "), sourceUrl: searchResults.map((searchResult) => searchResult.url).join(","), attributionRequired: true, selectedSource: payload.source, queries: payload.queries },
         confidence: 1
       });
 
@@ -197,7 +214,7 @@ export class JobDiscoveryManager implements DomainManagerContract {
         entityType: "job_discovery_run",
         entityId: runId,
         sourceEventId: completedEvent.id,
-        data: { ...result, status: "completed", sourceUrl: searchResult.url, sourceLabel: searchResult.sourceLabel, attributionRequired: true },
+        data: { ...result, status: "completed", sourceUrl: searchResults.map((searchResult) => searchResult.url).join(","), sourceLabel: searchResults.map((searchResult) => searchResult.sourceLabel).join(", "), attributionRequired: true },
         updatedAt: new Date()
       });
 

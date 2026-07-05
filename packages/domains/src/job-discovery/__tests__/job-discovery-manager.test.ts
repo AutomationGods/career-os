@@ -79,6 +79,38 @@ describe("JobDiscoveryManager", () => {
     expect(context.snapshotStore.listBySnapshotType("job.discovery_source_response").length).toBe(1);
   });
 
+  it("runs multiple title and keyword searches but imports duplicate jobs once", async () => {
+    const context = createContext();
+    const requestedUrls: string[] = [];
+    const fetcher = (async (input: string | URL | Request) => {
+      requestedUrls.push(input.toString());
+      return new Response(JSON.stringify({
+        "job-count": 1,
+        jobs: [
+          {
+            id: 123,
+            url: "https://remotive.com/remote-jobs/devops/splunk-engineer-123",
+            title: "Splunk Terraform Engineer",
+            company_name: "ExampleCo",
+            job_type: "full_time",
+            candidate_required_location: "Remote",
+            description: "Splunk Terraform AWS observability role."
+          }
+        ]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const manager = new JobDiscoveryManager({ fetcher });
+
+    const result = await manager.handle(createCommand({ jobTitles: ["Splunk Engineer", "Cribl Engineer"], keywords: ["AWS", "Terraform"], limit: 10, source: "remotive" }), context);
+    const searches = requestedUrls.map((url) => new URL(url).searchParams.get("search"));
+
+    expect(result.ok).toBe(true);
+    expect(searches).toEqual(["Splunk Engineer AWS", "Splunk Engineer Terraform", "Cribl Engineer AWS", "Cribl Engineer Terraform"]);
+    expect(result.data?.queries).toEqual(searches);
+    expect(result.data?.imported).toBe(1);
+    expect(context.snapshotStore.listBySnapshotType("job.discovery_source_response").length).toBe(4);
+  });
+
   it("keeps same Remotive job projections separate for two users", async () => {
     const context = createContext();
     const manager = new JobDiscoveryManager({ fetcher: createFetcher() });

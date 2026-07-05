@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 const productNavigation = [
   { href: "/career-command", label: "Command Center" },
+  { href: "/evidence", label: "Evidence" },
   { href: "/job-pipeline-results", label: "Job Matches" },
   { href: "/application-packets", label: "Applications" },
   { href: "/relationships", label: "Contacts" }
