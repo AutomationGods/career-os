@@ -1,7 +1,9 @@
+import "./globals.css";
 import "./styles.css";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
 import type { ReactNode } from "react";
+import { Toaster } from "sonner";
 
 const productNavigation = [
   { href: "/career-command", label: "Command Center" },
@@ -24,6 +26,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="en">
       <body>
         <AuthKitProvider initialAuth={initialAuth}>
+          <Toaster theme="dark" position="bottom-right" />
           <header className="top-nav" aria-label="Primary navigation">
             <a className="top-nav-brand" href="/career-command">Career OS</a>
             <nav className="top-nav-links">

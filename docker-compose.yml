@@ -84,5 +84,23 @@ services:
       HERMES_AGENT_API_KEY: ${HERMES_AGENT_API_KEY:?Set HERMES_AGENT_API_KEY in .env before starting Docker Compose}
       HERMES_AGENT_MODEL: ${HERMES_AGENT_MODEL:-hermes-agent}
       HERMES_AGENT_TIMEOUT_MS: ${HERMES_AGENT_TIMEOUT_MS:-60000}
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "--import", "tsx", "apps/worker/src/index.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://career_os:career_os@postgres:5432/career_os?schema=public
+      REDIS_URL: redis://redis:6379
+      CAREER_OS_COMMAND_RUNTIME: prisma
+    restart: unless-stopped
 volumes:
   postgres_data:

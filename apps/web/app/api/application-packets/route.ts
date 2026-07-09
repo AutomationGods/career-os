@@ -1,8 +1,19 @@
 import { createCommand } from "@career-os/orchestration";
+import { z } from "zod";
 import { requireAuthenticatedCareerUser } from "../_lib/auth";
 import { executeCommandForReview } from "../_lib/command-runtime";
 import { listPersistentApplicationPackets } from "../_lib/persistent-state";
-import { commandResult } from "../_lib/responses";
+import { commandResult, fail } from "../_lib/responses";
+
+const createPacketSchema = z.object({
+  jobId: z.string().min(1, "jobId is required"),
+  companyId: z.string().optional(),
+  personId: z.string().optional(),
+  selectedJob: z.record(z.unknown()).optional(),
+  selectedCompany: z.record(z.unknown()).optional(),
+  fitScoreSummary: z.record(z.unknown()).optional(),
+  notes: z.array(z.string()).optional(),
+});
 
 export async function GET() {
   const authUser = await requireAuthenticatedCareerUser();
@@ -12,15 +23,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const authUser = await requireAuthenticatedCareerUser();
-  const body = await request.json().catch(() => ({}));
-  const { userId: _ignoredUserId, ...payload } = body;
+  const parsed = createPacketSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) return fail("Invalid application packet request.", "INVALID_PACKET_REQUEST", 400);
+
+  const { ...payload } = parsed.data;
   const command = createCommand({
     type: "application_packets.create",
     requestedBy: "api",
     userId: authUser.userId,
     entityType: "job",
     entityId: payload.jobId,
-    payload
+    payload,
   });
   const { result } = await executeCommandForReview(request, command);
   return commandResult(result, 201, 400);

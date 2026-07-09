@@ -1,1 +1,2 @@
-export const events = ["salary-intelligence.completed"];
+export const SALARY_BENCHMARKED_EVENT = "salary.benchmarked";
+export const salaryEvents = [SALARY_BENCHMARKED_EVENT];

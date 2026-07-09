@@ -3,12 +3,26 @@ import { z } from "zod";
 
 export const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
+  cursor: z.string().min(1).optional(),
   userId: z.string().min(1).optional(),
   eventType: z.string().min(1).optional(),
   domain: z.string().min(1).optional(),
   projectionType: z.string().min(1).optional(),
   snapshotType: z.string().min(1).optional()
 });
+
+export interface PaginatedResult<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export function paginated<T extends { id: string }>(items: T[], limit: number): PaginatedResult<T> {
+  const hasMore = items.length > limit;
+  const sliced = hasMore ? items.slice(0, limit) : items;
+  const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
+  return { items: sliced, nextCursor, hasMore };
+}
 
 export function ok<T>(data: T, init?: ResponseInit) {
   return Response.json({ ok: true, data }, init);
